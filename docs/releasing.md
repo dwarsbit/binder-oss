@@ -47,8 +47,13 @@ missing: the `TAURI_SIGNING_PRIVATE_KEY` and
 key in `src-tauri/tauri.conf.json`. See
 [the updates package](../packages/updates/README.md).
 
-The macOS builds are signed and notarized once the `APPLE_*` secrets are
-set in dwarsbit/binder-oss. Until then they are unsigned, and so are the
-Windows builds.
+The macOS builds are signed and notarized once the six `APPLE_*` secrets
+are set in dwarsbit/binder-oss, and the Windows build is signed with Azure
+Artifact Signing once the six `AZURE_*` secrets are set there. Until then
+each is unsigned. Both take the same values as in dwarsbit/polemic-oss;
+[Polemic’s signing guide](https://github.com/dwarsbit/polemic-oss/blob/main/docs/signing.md) explains them. To
+check the Windows secrets without releasing, run **Windows signing check**
+from the Actions tab: it signs a test file and shows the signing tool's
+error if that fails.
 
 Binder has no browser build yet: it comes with sync, in 0.8.
