@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.4.0 (unreleased)
+## 0.4.0 (2026-11-22)
 
 - The desktop app keeps itself up to date. It checks for a new version when it starts and once a day, downloads it in the background and shows **Update ready**. Choose **Restart now** to install it; your work is saved first. **What’s new** lists the changes. Turn the check off, or check now, under **Settings**, in **Updates**. This version is the last one you download by hand.
 - Use Binder in your browser at scholarkit.app/binder, with your free Scholarkit account. Your binders are kept in your account, so you can open them on any computer. Make a binder with its research question, rename it or delete it from the list of binders.
