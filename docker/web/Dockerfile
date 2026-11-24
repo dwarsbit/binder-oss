@@ -12,16 +12,30 @@ COPY pnpm-lock.yaml pnpm-workspace.yaml package.json ./
 # Every workspace package Binder depends on, dev tools included, needs its manifest here.
 COPY packages/tsconfig packages/tsconfig
 COPY packages/eslint-config/package.json packages/eslint-config/
+COPY packages/contracts/package.json packages/contracts/
 COPY packages/editor/package.json packages/editor/
 COPY packages/i18n/package.json packages/i18n/
 COPY packages/updates/package.json packages/updates/
+COPY packages/monitoring/package.json packages/monitoring/
 COPY apps/binder/package.json apps/binder/
 RUN pnpm install --frozen-lockfile --ignore-scripts --filter @scholarkit/binder...
+COPY packages/contracts packages/contracts
 COPY packages/editor packages/editor
 COPY packages/i18n packages/i18n
 COPY packages/updates packages/updates
+COPY packages/monitoring packages/monitoring
 COPY apps/binder apps/binder
-RUN pnpm --filter @scholarkit/binder build:web
+# Error reports (src/lib/monitoring.ts); without it the build sends none.
+ARG VITE_SENTRY_DSN=""
+ENV VITE_SENTRY_DSN=$VITE_SENTRY_DSN
+# Source maps go to Sentry when the build gets the sentry_auth_token secret, and stay out of
+# the image either way.
+ARG SENTRY_ORG=""
+ARG SENTRY_PROJECT=""
+# The web clipper's payload schema comes from contracts, which builds to dist/ first.
+RUN pnpm --filter @scholarkit/contracts build
+RUN --mount=type=secret,id=sentry_auth_token,env=SENTRY_AUTH_TOKEN \
+    pnpm --filter @scholarkit/binder build:web
 
 FROM caddy:2-alpine
 COPY apps/binder/docker/web/Caddyfile /etc/caddy/Caddyfile

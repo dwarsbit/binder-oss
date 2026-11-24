@@ -1,6 +1,7 @@
 import { BookOpen, Check, Loader2, RefreshCw, Sparkles, X } from "lucide-react";
 import { useState } from "react";
 import { cn } from "@scholarkit/editor/lib/cn";
+import { safeHref } from "@scholarkit/editor/lib/safe-href";
 import { KINDS, kindLabel, type Item, type Kind } from "@/lib/binder";
 import {
   PARTS,
@@ -28,12 +29,15 @@ function Inline({ text }: { text: string }) {
   for (let found = pattern.exec(text); found; found = pattern.exec(text)) {
     if (found.index > last) nodes.push(text.slice(last, found.index));
     if (found[1]) nodes.push(found[1]);
-    else if (found[2])
+    else if (found[2] && safeHref(found[3]))
       nodes.push(
-        <a key={key++} href={found[3]} className="passage-link">
+        <a key={key++} href={safeHref(found[3])} className="passage-link">
           {found[2]}
         </a>,
       );
+    // A link the assistant shouldn't make (a page it read may ask for
+    // one): its text only.
+    else if (found[2]) nodes.push(found[2]);
     else nodes.push(<strong key={key++}>{found[4]}</strong>);
     last = pattern.lastIndex;
   }

@@ -73,6 +73,16 @@ all of its works at once, or search for one work. Works that are in the
 binder already are left out, so you can add a collection again after it
 grew. An item from Zotero opens there with **Open in Zotero**.
 
+## Clip from the web
+
+With the Binder Clipper browser extension, you can save a page straight
+into a binder: choose the extension's icon, pick the binder and choose
+**Save page**, or right-click the page and choose **Save page to
+Binder**. Turn on **Highlight on this page** first to mark passages as
+you read; they arrive as highlights on the item. See
+[the clipper](clipper.md). Clips need a binder in your Scholarkit account
+and a sign-in at scholarkit.app/binder once.
+
 ## Go through your inbox
 
 Everything new lands in the **Inbox**. Open an item, look at it, and

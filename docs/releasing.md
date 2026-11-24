@@ -57,3 +57,8 @@ from the Actions tab: it signs a test file and shows the signing tool's
 error if that fails.
 
 Binder has no browser build yet: it comes with sync, in 0.8.
+
+The builds report errors to Sentry once the `SENTRY_DSN` variable is set in
+dwarsbit/binder-oss, and send their source maps there once the `SENTRY_AUTH_TOKEN`
+secret and the `SENTRY_ORG` and `SENTRY_PROJECT` variables are set too.
+Without them a release sends no reports; builds from a fork never do.

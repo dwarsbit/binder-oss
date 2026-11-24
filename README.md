@@ -56,6 +56,9 @@ your sources and sums them up. Asking your sources questions comes in 0.4.
   Open Library, so the title, authors, year and journal fill themselves
   in. Add a file, or drop files on the window: each is copied next to its
   item.
+- **Browser clipper**: the Binder Clipper extension saves a page and the
+  passages you highlighted on it into a binder in your account. See
+  [the clipper](docs/clipper.md).
 - **Zotero**: add a whole collection from the Zotero app or your library
   at zotero.org at once, or search for a work. Works already in the binder
   are left out, and each item opens in Zotero.

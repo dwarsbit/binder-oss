@@ -8,6 +8,7 @@ describe("catalogs", () => {
     const { changed } = extract({
       srcDir: [
         "src",
+        "clipper/src",
         "node_modules/@scholarkit/editor/src",
         "node_modules/@scholarkit/updates/src",
       ],

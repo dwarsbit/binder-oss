@@ -430,7 +430,7 @@ function HtmlSource(props: SourceProps) {
 
   return (
     <div ref={page} className="html-page" style={{ fontSize: `${16 * zoom}px` }}>
-      {kept.url && (
+      {/^https?:\/\//i.test(kept.url) && (
         <p className="html-source">
           {t("Kept from")}{" "}
           <a

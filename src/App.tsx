@@ -142,6 +142,8 @@ import { budgetFor, readWithAssistant } from "@/lib/assistant/reading";
 import { useAssistantRuns, type Start } from "@/lib/assistant/runs";
 import { completer } from "@/lib/assistant/transport";
 import { keepPage } from "@/lib/webpage";
+import { clipHighlights, sameUrl, subscribeClips } from "@/lib/clipper";
+import type { ClipPayload } from "@scholarkit/contracts";
 import { t, tn } from "@scholarkit/i18n";
 
 const escapeHtml = (text: string) =>
@@ -233,10 +235,13 @@ export default function App({
   onRenameBinder,
   status,
   account,
+  projectId,
 }: {
   store: BinderStore;
   /** Opens another binder, where the app can. */
   onSwitchBinder?: () => void;
+  /** The binder's id on the server, where it has one; clips from the browser extension name it. */
+  projectId?: string;
   /** Gives the binder another name, where the app can. Rejects with why not. */
   onRenameBinder?: (name: string) => Promise<void>;
   /** What the status bar says in place of "Saved", such as "Saving…". */
@@ -751,6 +756,84 @@ export default function App({
     }
     if (path !== selected) open(path);
   };
+
+  /**
+   * Saves a clip from the Binder browser extension into this binder: a web
+   * page as an item with its article kept, and the highlights made on it.
+   * A page already in the binder gets the new highlights instead of a second item.
+   */
+  const applyClip = async (clip: ClipPayload) => {
+    const current = fresh.current;
+    if (!current) return;
+    const kept = clip.html ? keepPage(clip.html, clip.url, today()) : null;
+    const existing = itemsOf(current).find(
+      (entry) => entry.url && sameUrl(entry.url, clip.url),
+    );
+    if (existing) {
+      const marks = highlightsPathOf(existing.path);
+      const { highlights } = readHighlights(fresh.current?.pages[marks]);
+      const added = clipHighlights(
+        clip,
+        highlights.map((h) => h.id),
+      );
+      if (added.length) {
+        writeSource(
+          marks,
+          writeHighlights(
+            existing.path,
+            [...highlights, ...added],
+            fresh.current?.pages[marks],
+          ),
+        );
+      }
+      if (kept && !existing.file) {
+        const file = existing.path.replace(/\.md$/i, ".html");
+        await store.writeFile(file, new Blob([kept.html], { type: "text/html" }));
+        const latest = fresh.current ?? current;
+        if (!(latest.files ?? []).includes(file)) {
+          commit({ ...latest, files: [...(latest.files ?? []), file].sort() });
+        }
+        setFilesVersion((n) => n + 1);
+        changeItem(existing.path, { file: baseName(file) });
+        newSources.current.add(existing.path);
+      }
+      showItem(existing.path);
+      setProblem(null);
+      return;
+    }
+    const title = kept?.title || clip.title.trim() || titleOfUrl(clip.url);
+    const path = await addItem(
+      {
+        title,
+        kind: "webpage",
+        url: clip.url,
+        authors: clip.author?.trim() ? [clip.author.trim()] : undefined,
+      },
+      kept
+        ? { data: new Blob([kept.html], { type: "text/html" }), extension: ".html" }
+        : {},
+    );
+    if (path && clip.highlights.length) {
+      writeSource(highlightsPathOf(path), writeHighlights(path, clipHighlights(clip)));
+    }
+    if (path) {
+      if (view.kind !== "inbox") showView({ kind: "inbox" });
+      setSelected(path);
+      setOpened((n) => n + 1);
+    }
+  };
+
+  // Clips from the Binder browser extension arrive while this binder is open.
+  const clips = useRef<(clip: ClipPayload) => void>(() => {});
+  useEffect(() => {
+    clips.current = (clip) => {
+      applyClip(clip).catch((error: unknown) => setProblem(messageOf(error)));
+    };
+  });
+  useEffect(() => {
+    if (!projectId) return;
+    return subscribeClips(projectId, (clip) => clips.current(clip));
+  }, [projectId]);
 
   /** Opens an item's source in the reader, at a page, a highlight or a text to find. */
   const readSource = (

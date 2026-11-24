@@ -387,6 +387,7 @@ function OpenBinder({ id }: { id: string }) {
     <App
       store={store}
       status={status}
+      projectId={id}
       onSwitchBinder={() => go(BASE)}
       onRenameBinder={
         info?.role === "owner"

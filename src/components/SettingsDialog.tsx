@@ -39,6 +39,8 @@ import {
 } from "@scholarkit/editor/components/Dialog";
 import { t, tn } from "@scholarkit/i18n";
 import { LanguageSettings } from "./LanguageSettings";
+import { ErrorReportSettings } from "./ErrorReportSettings";
+import { reportsBuiltIn } from "@/lib/monitoring";
 
 type Status = "checking" | "ok" | "error" | "off";
 
@@ -70,7 +72,7 @@ function Dot({ status }: { status: Status }) {
 async function probe(source: ZoteroSource): Promise<Status> {
   if (source.kind === "app") return (await zoteroAppAnswers()) ? "ok" : "error";
   if (!source.userId || !source.apiKey) return "error";
-  return (await checkZoteroKey(source.apiKey)) ? "ok" : "error";
+  return (await checkZoteroKey(source.apiKey, source.id)) ? "ok" : "error";
 }
 
 function subtitle(source: ZoteroSource, status: Status): string {
@@ -369,7 +371,7 @@ function ZoteroCloudForm({
   const validate = async () => {
     setBusy(true);
     setNote(null);
-    const result = await checkZoteroKey(apiKey);
+    const result = await checkZoteroKey(apiKey, source?.id);
     setBusy(false);
     if (!result) {
       setNote({
@@ -697,6 +699,7 @@ export function SettingsDialog({
             "To add a work by its DOI or ISBN, paste it in Add to binder. In a note, type a DOI or an ISBN after @ to cite it.",
           )}
         </p>
+        {isDesktop && reportsBuiltIn && <ErrorReportSettings />}
         {updater && <UpdatesSettings updater={updater} app="Binder" />}
       </div>
       <div className="mt-4 flex justify-end">
