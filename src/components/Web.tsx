@@ -20,19 +20,14 @@ import { serverStore } from "@/lib/server-store";
 import { ConfirmDialog } from "./ConfirmDialog";
 import { Mark } from "./Mark";
 import { ScholarkitHome } from "./ScholarkitHome";
+import { webAddresses } from "@/lib/web-address";
 import { t } from "@scholarkit/i18n";
 import { saveBeforeSwitch } from "@/lib/languages";
 
 const server = new BinderServer(browserTransport);
 
-/** Where the app is served: "/binder/". */
-const BASE = import.meta.env.BASE_URL;
-
-/** The binder in the address, or null on the list of binders. */
-const binderIn = (path: string) =>
-  path.startsWith(BASE)
-    ? decodeURIComponent(path.slice(BASE.length).split("/")[0]) || null
-    : null;
+/** The app's addresses: the list at /binder/projects, one binder at /binder/projects/<id>. */
+const ADDRESS = webAddresses(import.meta.env.BASE_URL);
 
 const subscribeToAddress = (listener: () => void) => {
   window.addEventListener("popstate", listener);
@@ -107,7 +102,7 @@ function Binders({ account }: { account: Account }) {
     run(async () => {
       const binder = await server.createProject(name.trim(), "online");
       await fill(binder.id, question);
-      go(`${BASE}${binder.id}`);
+      go(ADDRESS.of(binder.id));
     });
 
   const rename = () =>
@@ -205,11 +200,11 @@ function Binders({ account }: { account: Account }) {
                   className="group relative flex items-center rounded-md hover:bg-muted"
                 >
                   <a
-                    href={`${BASE}${binder.id}`}
+                    href={ADDRESS.of(binder.id)}
                     onClick={(event) => {
                       if (event.metaKey || event.ctrlKey || event.shiftKey) return;
                       event.preventDefault();
-                      go(`${BASE}${binder.id}`);
+                      go(ADDRESS.of(binder.id));
                     }}
                     className="flex min-w-0 flex-1 items-baseline gap-3 px-2.5 py-1.5 text-left"
                   >
@@ -390,7 +385,7 @@ function OpenBinder({ id }: { id: string }) {
       store={store}
       status={status}
       projectId={id}
-      onSwitchBinder={() => go(BASE)}
+      onSwitchBinder={() => go(ADDRESS.list)}
       onRenameBinder={
         info?.role === "owner"
           ? async (name) => setInfo(await server.renameProject(id, name))
@@ -402,11 +397,23 @@ function OpenBinder({ id }: { id: string }) {
 
 /**
  * Binder in the browser, on the Scholarkit server: the account's
- * binders at /binder/, one binder at /binder/<id>. Signed out, it goes
- * to the server's sign-in page and comes back.
+ * binders at /binder/projects, one binder at /binder/projects/<id>. Signed
+ * out, it goes to the server's sign-in page and comes back.
  */
 export function Web() {
   const path = useSyncExternalStore(subscribeToAddress, () => window.location.pathname);
+
+  // One address for the list, and old links (/binder/<id>) land on the binder's new address.
+  useEffect(() => {
+    const better = ADDRESS.better(path);
+    if (better === null) return;
+    window.history.replaceState(
+      null,
+      "",
+      better + window.location.search + window.location.hash,
+    );
+    window.dispatchEvent(new PopStateEvent("popstate"));
+  }, [path]);
   const [account, setAccount] = useState<Account | null>(null);
   const [problem, setProblem] = useState<string | null>(null);
 
@@ -444,6 +451,6 @@ export function Web() {
     );
   }
 
-  const id = binderIn(path);
+  const id = ADDRESS.idIn(path);
   return id ? <OpenBinder key={id} id={id} /> : <Binders account={account} />;
 }

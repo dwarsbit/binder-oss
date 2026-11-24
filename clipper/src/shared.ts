@@ -53,9 +53,14 @@ export interface CategoryLabel {
   label: string;
 }
 
-/** The binder id in a /binder/<id> address, or null. */
+/**
+ * The binder id in a /binder/projects/<id> address, or null. /binder/<id>, the address from
+ * before the move, still counts: a server that hasn't moved yet uses it.
+ */
 export function binderOf(url: string): string | null {
-  const found = /\/binder\/([^/?#]+)/.exec(url);
+  const found =
+    /\/binder\/projects\/([^/?#]+)/.exec(url) ??
+    /\/binder\/(?!projects(?:[/?#]|$))([^/?#]+)/.exec(url);
   return found ? decodeURIComponent(found[1]) : null;
 }
 

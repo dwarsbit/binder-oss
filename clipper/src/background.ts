@@ -27,7 +27,7 @@ import {
 /**
  * The background worker: the context menus and the popup's Save buttons, the
  * capture of a tab, and the delivery of clips to a Binder web tab, opening
- * one at /binder/<id> when none is open. Clips wait in storage until the tab
+ * one at /binder/projects/<id> when none is open. Clips wait in storage until the tab
  * says it is ready.
  *
  * This file is built as a classic script, so it runs as Chrome's service
@@ -189,7 +189,7 @@ async function save(mode: Mode, tabId?: number): Promise<SaveResult> {
     try {
       await chrome.action.openPopup();
     } catch {
-      await chrome.tabs.create({ url: `${origin}/binder/` });
+      await chrome.tabs.create({ url: `${origin}/binder/projects` });
     }
     return { ok: false, error: "pick" };
   }
@@ -236,9 +236,9 @@ async function deliver(origin: string) {
   if (!queue.length) return;
   const open = await chrome.tabs.query({ url: `${origin}/binder/*` });
   for (const clip of queue) {
-    const target = `${origin}/binder/${clip.binder}`;
+    const target = `${origin}/binder/projects/${clip.binder}`;
     const tab = open.find(
-      (entry) => entry.id !== undefined && (entry.url ?? "").startsWith(target),
+      (entry) => entry.id !== undefined && binderOf(entry.url ?? "") === clip.binder,
     );
     if (tab?.id !== undefined) {
       try {
