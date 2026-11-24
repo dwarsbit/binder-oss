@@ -125,6 +125,13 @@ function Binders({ account }: { account: Account }) {
 
   return (
     <div className="relative flex h-full flex-col items-center overflow-y-auto px-4 pt-10 pb-16">
+      {/* The Scholarkit home page: every app's projects in one list. */}
+      <a
+        href="/"
+        className="absolute top-3 left-4 text-xs text-muted-foreground hover:text-foreground"
+      >
+        {t("Scholarkit home")}
+      </a>
       <a
         href="/account"
         className="absolute top-3 right-4 text-xs text-muted-foreground hover:text-foreground"
