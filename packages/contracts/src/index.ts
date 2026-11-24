@@ -14,10 +14,13 @@ export type HealthResponse = z.infer<typeof healthResponse>;
 
 /**
  * The plan sets the limits of the online services: storage, compile time a day and active
- * review links. Every plan has every service; Student and Pro are paid.
+ * review links. Every plan has every service; Plus and Pro are paid. Plus also has a student price,
+ * which gives the same plan.
  */
-export const plan = z.enum(["free", "student", "pro"]);
+export const plan = z.enum(["free", "plus", "pro"]);
 export type Plan = z.infer<typeof plan>;
+export const paidPlan = z.enum(["plus", "pro"]);
+export type PaidPlan = z.infer<typeof paidPlan>;
 
 /** GET /api/me: the signed-in user. 401 without a session. */
 /** A language the account pages and emails can be in. */
@@ -166,7 +169,7 @@ export const deleteAccountRequest = z.union([
 ]);
 export type DeleteAccountRequest = z.infer<typeof deleteAccountRequest>;
 
-// Billing: Student and Pro subscriptions. The subscription's price decides the plan; without
+// Billing: Plus and Pro subscriptions. The subscription's price decides the plan; without
 // one the user is on Free.
 
 export const billingInterval = z.enum(["month", "year"]);
@@ -188,12 +191,12 @@ export type SubscriptionStatus = z.infer<typeof subscriptionStatus>;
 export const billingResponse = z.object({
   /** False when this server runs without billing: every account has Pro (self-hosted, development). */
   enabled: z.boolean(),
-  /** True when this server offers the Student plan at checkout. */
-  studentRate: z.boolean(),
+  /** True when this server offers Plus's student price at checkout. */
+  studentPrice: z.boolean(),
   plan,
   /** A plan given by Polemic until a date, outside Stripe; null when none is running. */
   grant: z
-    .object({ plan: z.enum(["student", "pro"]), endsAt: z.iso.datetime() })
+    .object({ plan: paidPlan, endsAt: z.iso.datetime() })
     .nullable()
     .default(null),
   /** The subscription that decides the plan, or the latest one; null if the user never subscribed. */
@@ -202,7 +205,9 @@ export const billingResponse = z.object({
       status: subscriptionStatus,
       /** Null when the plan's price is no longer configured on this server. */
       interval: billingInterval.nullable(),
-      /** On the Student plan. */
+      /** The plan the subscription's price gives; null when the price is no longer configured on this server. */
+      plan: paidPlan.nullable(),
+      /** On Plus's student price. */
       student: z.boolean(),
       renewsAt: z.iso.datetime().nullable(),
       endsAt: z.iso.datetime().nullable(),
@@ -213,19 +218,25 @@ export const billingResponse = z.object({
 export type BillingResponse = z.infer<typeof billingResponse>;
 
 /** POST /api/billing/checkout (browser session): body. */
-export const checkoutRequest = z.object({
-  interval: billingInterval,
-  /** For the Student plan: the account email is the student's university email. Not verified. Without it: Pro. */
-  student: z
-    .object({
-      institution: z
-        .string()
-        .trim()
-        .min(1, "Enter your university or college")
-        .max(200),
-    })
-    .optional(),
-});
+export const checkoutRequest = z
+  .object({
+    plan: paidPlan,
+    interval: billingInterval,
+    /** Plus only, for the student price: the university or college the user studies at. Not verified. */
+    student: z
+      .object({
+        institution: z
+          .string()
+          .trim()
+          .min(1, "Enter your university or college")
+          .max(200),
+      })
+      .optional(),
+  })
+  .refine((body) => !body.student || body.plan === "plus", {
+    message: "The student price is for Plus only",
+    path: ["student"],
+  });
 export type CheckoutRequest = z.infer<typeof checkoutRequest>;
 
 /** POST /api/billing/checkout and POST /api/billing/portal: where to send the browser. */
@@ -265,7 +276,7 @@ export type UsageResponse = z.infer<typeof usageResponse>;
 export const plansResponse = z.object({
   compileMultiple: z.object({
     free: z.number().int().positive(),
-    student: z.number().int().positive(),
+    plus: z.number().int().positive(),
     pro: z.number().int().positive(),
   }),
 });
@@ -1149,7 +1160,7 @@ export const adminUserResponse = z.object({
   grant: z
     .object({
       id: z.string(),
-      plan: z.enum(["student", "pro"]),
+      plan: paidPlan,
       endsAt: z.iso.datetime(),
       note: z.string().nullable(),
       grantedBy: z.string(),
@@ -1164,10 +1175,12 @@ export const adminUserResponse = z.object({
   subscriptions: z.array(
     z.object({
       id: z.string(),
-      plan: z.enum(["student", "pro"]),
+      plan: paidPlan,
+      /** On Plus's student price. */
+      student: z.boolean(),
       interval: billingInterval.nullable(),
       status: subscriptionStatus,
-      /** Student: the university or college given at checkout. */
+      /** Student price: the university or college given at checkout. */
       institution: z.string().nullable(),
       renewsAt: z.iso.datetime().nullable(),
       endsAt: z.iso.datetime().nullable(),
@@ -1260,9 +1273,9 @@ export const suspendRequest = z.object({
 });
 export type SuspendRequest = z.infer<typeof suspendRequest>;
 
-/** POST …/grant-plan: Student or Pro without Stripe until the end of `endsOn` (UTC). Replaces a running grant. */
+/** POST …/grant-plan: Plus or Pro without Stripe until the end of `endsOn` (UTC). Replaces a running grant. */
 export const grantPlanRequest = z.object({
-  plan: z.enum(["student", "pro"]),
+  plan: paidPlan,
   endsOn: z.iso.date(),
   note: z.string().trim().max(500).optional(),
 });
