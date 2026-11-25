@@ -38,6 +38,8 @@ export const meResponse = z.object({
   image: z.string().nullable(),
   /** The interface language chosen for the account pages and emails; null follows the browser. */
   language: accountLanguage.nullable().optional(),
+  /** The account's username, which addresses its published sites; null until it has one. */
+  username: z.string().nullable().optional(),
 });
 export type MeResponse = z.infer<typeof meResponse>;
 
@@ -376,10 +378,91 @@ export const updateProjectRequest = z
   );
 export type UpdateProjectRequest = z.infer<typeof updateProjectRequest>;
 
-// Sites: a Cursive project published as a website, at <SITES_URL>/<slug>/. The server renders the
-// project's Markdown pages when the owner publishes; publishing again replaces them.
+// Usernames: an account's name in the addresses of its published sites, <SITES_URL>/@<username>/.
+// An account gets one the first time it publishes, made from its name, and can change it. The
+// old name then leads to the new one for USERNAME_REDIRECT_DAYS, and nobody else can take it.
 
-/** Names a site can't take: they are, or may become, paths of the sites host itself. */
+/** Names nobody can take: our products, and names people could mistake for us. */
+export const RESERVED_USERNAMES = [
+  "about",
+  "abuse",
+  "account",
+  "admin",
+  "administrator",
+  "api",
+  "app",
+  "binder",
+  "blog",
+  "cursive",
+  "dwarsbit",
+  "help",
+  "info",
+  "legal",
+  "mail",
+  "moderator",
+  "official",
+  "polemic",
+  "postmaster",
+  "privacy",
+  "root",
+  "scholarkit",
+  "security",
+  "sites",
+  "staff",
+  "status",
+  "support",
+  "system",
+  "team",
+  "terms",
+  "webmaster",
+  "www",
+] as const;
+
+/** How long an old username leads to the new one after a change. */
+export const USERNAME_REDIRECT_DAYS = 90;
+
+/** A username: 3 to 30 lowercase letters, digits and hyphens, a letter or digit at each end. */
+export const username = z
+  .string()
+  .regex(
+    /^[a-z0-9](?:[a-z0-9-]{1,28})[a-z0-9]$/,
+    "Use 3 to 30 lowercase letters, digits and hyphens, with a letter or digit at each end",
+  )
+  .refine(
+    (name) => !(RESERVED_USERNAMES as readonly string[]).includes(name),
+    "This username is reserved",
+  );
+
+/**
+ * GET /api/account/username: the account's username, the address of its page of published
+ * sites (null while publishing is off or it has no username), and the old usernames that still
+ * lead to it.
+ */
+export const usernameResponse = z.object({
+  username: z.string().nullable(),
+  pageUrl: z.url().nullable(),
+  previous: z.array(
+    z.object({
+      username: z.string(),
+      /** When the old name stops leading here and anyone can take it. */
+      until: z.iso.datetime(),
+    }),
+  ),
+});
+export type UsernameResponse = z.infer<typeof usernameResponse>;
+
+/**
+ * PUT /api/account/username (browser session): changes the username and answers with a
+ * UsernameResponse. 409 "username_taken"; 429 "rate_limited" after too many changes.
+ */
+export const setUsernameRequest = z.object({ username });
+export type SetUsernameRequest = z.infer<typeof setUsernameRequest>;
+
+// Sites: a Cursive project published as a website, at <SITES_URL>/@<username>/<slug>/, where the
+// username is the owner's. The server renders the project's Markdown pages when the owner
+// publishes; publishing again replaces them. <SITES_URL>/@<username> lists the owner's sites.
+
+/** Names a site can't take. */
 export const RESERVED_SITE_SLUGS = [
   "about",
   "account",
@@ -410,7 +493,7 @@ export const RESERVED_SITE_SLUGS = [
   "www",
 ] as const;
 
-/** A site's address: 3 to 40 lowercase letters, digits and hyphens, a letter or digit at each end. */
+/** A site's name: 3 to 40 lowercase letters, digits and hyphens, a letter or digit at each end. */
 export const siteSlug = z
   .string()
   .regex(
@@ -437,9 +520,14 @@ export const SITE_THEMES = [
 export const siteTheme = z.enum(SITE_THEMES);
 export type SiteTheme = z.infer<typeof siteTheme>;
 
+/** A site's address below SITES_URL, without the @: "<username>/<slug>". */
+export const siteAddress = z
+  .string()
+  .regex(/^[a-z0-9][a-z0-9-]{1,28}[a-z0-9]\/[a-z0-9][a-z0-9-]{1,38}[a-z0-9]$/);
+
 export const siteInfo = z.object({
   slug: z.string(),
-  /** <SITES_URL>/<slug>/ */
+  /** <SITES_URL>/@<username>/<slug>/ */
   url: z.url(),
   title: z.string(),
   pages: z.number().int().nonnegative(),
@@ -450,19 +538,25 @@ export const siteInfo = z.object({
 export type SiteInfo = z.infer<typeof siteInfo>;
 
 /**
- * GET /api/projects/:id/site (any role): the published site, or null; a free address made from
- * the project's name; and what every site's address starts with, <SITES_URL>/.
+ * GET /api/projects/:id/site (any role): the published site, or null; a free name made from the
+ * project's name; the owner's username, or the one the first publish will give them; and what
+ * the owner's site addresses start with, <SITES_URL>/@<username>/.
  */
 export const siteResponse = z.object({
   site: siteInfo.nullable(),
   suggestedSlug: z.string(),
+  username: z.string(),
+  /** Whether the owner has the username yet; false until their first publish. */
+  usernameSaved: z.boolean(),
   baseUrl: z.url(),
+  /** <SITES_URL>/@<username>: the page that lists the owner's sites. */
+  ownerPageUrl: z.url(),
 });
 export type SiteResponse = z.infer<typeof siteResponse>;
 
 /**
  * POST /api/projects/:id/site (owner): body. Publishes the project's pages as they are on the
- * server now and answers with the SiteInfo. slug sets or changes the address; without it the
+ * server now and answers with the SiteInfo. An owner without a username gets one first. slug sets or changes the address; without it the
  * site keeps its address, or takes the suggested one the first time. 409 "slug_taken". theme sets
  * the site's look; without it the site keeps the one it has, or takes "default" the first time.
  */
@@ -483,9 +577,10 @@ export const sitePagePath = z
   .max(600)
   .regex(/^(?:[^/\s][^\s]*)?$/, "Not a page of a site");
 
-/** GET /api/learn/site?site=<slug> (public): what the sign-in page says about the site. */
+/** GET /api/learn/site?site=<username>/<slug> (public): what the sign-in page says about the site. */
 export const learnSiteResponse = z.object({
-  slug: z.string(),
+  /** The site's address now: "<username>/<slug>". */
+  address: siteAddress,
   title: z.string(),
   url: z.url(),
   author: z.string(),
@@ -499,7 +594,7 @@ export type LearnSiteResponse = z.infer<typeof learnSiteResponse>;
  * has no learner accounts.
  */
 export const learnAuthorizeRequest = z.object({
-  site: siteSlug,
+  site: siteAddress,
   returnPath: sitePagePath.default(""),
 });
 export type LearnAuthorizeRequest = z.infer<typeof learnAuthorizeRequest>;
@@ -615,8 +710,17 @@ export const createReviewLinkRequest = z.object({
 });
 export type CreateReviewLinkRequest = z.infer<typeof createReviewLinkRequest>;
 
-/** POST /api/projects/:id/links: the new link with its URL (<PUBLIC_URL>/r/<token>). */
-export const createReviewLinkResponse = reviewLinkInfo.extend({ url: z.url() });
+/** A review link's code in a short address, <SITES_URL>/<code>: 10 letters and digits. */
+export const reviewLinkCode = z.string().regex(/^[A-Za-z0-9]{10}$/);
+
+/**
+ * POST /api/projects/:id/links: the new link with its URL (<PUBLIC_URL>/r/<token>) and, when the
+ * server has a sites host, the same link as a short address (<SITES_URL>/<token>).
+ */
+export const createReviewLinkResponse = reviewLinkInfo.extend({
+  url: z.url(),
+  shortUrl: z.url().optional(),
+});
 export type CreateReviewLinkResponse = z.infer<typeof createReviewLinkResponse>;
 
 /** GET /api/review/:token (no session needed): what the link opens. 404 when unknown or expired. */
