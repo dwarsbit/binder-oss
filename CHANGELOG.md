@@ -4,7 +4,10 @@
 
 - When something goes wrong, Binder sends us an error report so we can fix it: what failed and where in its code, never your text, file names or email address. In the desktop app, turn it off under **Settings**, in **Error reports**.
 - In the desktop app, your Zotero cloud key stays inside the app and goes only to zotero.org. A link that could run code instead of opening a page, mail or Zotero shows as plain text, in footnotes too. Links in the assistant's answers and in kept web pages follow the same rule.
-- In the browser, the Scholarkit icon at the top left of the list of binders opens your Scholarkit home page. It lists everything in your account, from Binder, Polemic and Cursive, in one place.
+- Binder's icon at the top left takes you back to your binders, as in Polemic and Cursive: in the browser to your Scholarkit home page, which lists everything in your account, from Binder, Polemic and Cursive, in one place; in the desktop app to the list of binders.
+- Your avatar is at the top right, as in Polemic and Cursive. In the desktop app it moved there from the bottom of the sidebar. In the browser it is new, and opens **Manage your account** and **Sign out**.
+- **Export…** shows an arrow pointing out, so it no longer looks like an import.
+- While a binder opens, you see Binder's layout with a spinner where the binder appears, as in Polemic and Cursive.
 - In the browser, your binders are at `app.scholarkit.app/binder/projects`. Links and bookmarks to the old address keep working, and the Binder Clipper follows.
 
 ## 0.4.0 (2026-11-22)

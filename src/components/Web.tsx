@@ -19,7 +19,8 @@ import {
 import { serverStore } from "@/lib/server-store";
 import { ConfirmDialog } from "./ConfirmDialog";
 import { Mark } from "./Mark";
-import { ScholarkitHome } from "./ScholarkitHome";
+import { AccountMenu } from "./AccountMenu";
+import { AppLoading, HomeMark } from "@scholarkit/editor/components/AppShell";
 import { webAddresses } from "@/lib/web-address";
 import { t } from "@scholarkit/i18n";
 import { saveBeforeSwitch } from "@/lib/languages";
@@ -28,6 +29,20 @@ const server = new BinderServer(browserTransport);
 
 /** The app's addresses: the list at /binder/projects, one binder at /binder/projects/<id>. */
 const ADDRESS = webAddresses(import.meta.env.BASE_URL);
+
+/** The avatar at the end of the header, as in the desktop app, without its syncing: here the account holds every binder. */
+const accountMenu = (account: Account) => (
+  <AccountMenu
+    signedIn
+    account={account}
+    external={false}
+    onManage={() => window.location.assign("/account")}
+    onSignOut={async () => {
+      await server.signOut();
+      window.location.assign("/sign-in");
+    }}
+  />
+);
 
 const subscribeToAddress = (listener: () => void) => {
   window.addEventListener("popstate", listener);
@@ -121,14 +136,12 @@ function Binders({ account }: { account: Account }) {
 
   return (
     <div className="relative flex h-full flex-col items-center overflow-y-auto px-4 pt-10 pb-16">
-      <ScholarkitHome className="absolute top-2 left-3" />
-      <a
-        href="/account"
-        className="absolute top-3 right-4 text-xs text-muted-foreground hover:text-foreground"
-        title={account.email}
-      >
-        {account.name}
-      </a>
+      <div className="absolute top-2.5 left-3">
+        <HomeMark href="/" label={t("Scholarkit home")}>
+          <Mark className="size-[22px]" />
+        </HomeMark>
+      </div>
+      <div className="absolute top-2 right-3">{accountMenu(account)}</div>
       <h1 className="mt-auto mb-6 flex flex-none flex-col items-center gap-3 text-lg font-semibold">
         <Mark className="size-14" />
         {t("Binder")}
@@ -319,7 +332,7 @@ function Binders({ account }: { account: Account }) {
 const closing = new WeakMap<object, ReturnType<typeof setTimeout>>();
 
 /** One binder of the account, open. */
-function OpenBinder({ id }: { id: string }) {
+function OpenBinder({ id, account }: { id: string; account: Account }) {
   const store = useMemo(() => serverStore(server, id), [id]);
   const [info, setInfo] = useState<ServerProject | null>(null);
   const [saved, setSaved] = useState(true);
@@ -386,6 +399,8 @@ function OpenBinder({ id }: { id: string }) {
       status={status}
       projectId={id}
       onSwitchBinder={() => go(ADDRESS.list)}
+      homeHref="/"
+      account={accountMenu(account)}
       onRenameBinder={
         info?.role === "owner"
           ? async (name) => setInfo(await server.renameProject(id, name))
@@ -431,26 +446,39 @@ export function Web() {
   }, []);
 
   if (!account) {
+    const retry = problem && (
+      <button type="button" className={BUTTON} onClick={() => window.location.reload()}>
+        {t("Try again")}
+      </button>
+    );
+    // A binder opens into its layout; the list has none to show yet.
+    if (ADDRESS.idIn(path)) {
+      return (
+        <AppLoading
+          mark={<Mark className="size-[22px]" />}
+          failed={Boolean(problem)}
+          status={problem ?? t("Opening Binder…")}
+        >
+          {retry}
+        </AppLoading>
+      );
+    }
     return (
       <div className="grid h-full place-items-center p-6 text-center">
-        <div>
+        <div className="flex flex-col items-center gap-3">
           <p className="text-sm text-muted-foreground" role="status">
             {problem ?? t("Opening Binder…")}
           </p>
-          {problem && (
-            <button
-              type="button"
-              className={`${BUTTON} mt-3`}
-              onClick={() => window.location.reload()}
-            >
-              {t("Try again")}
-            </button>
-          )}
+          {retry}
         </div>
       </div>
     );
   }
 
   const id = ADDRESS.idIn(path);
-  return id ? <OpenBinder key={id} id={id} /> : <Binders account={account} />;
+  return id ? (
+    <OpenBinder key={id} id={id} account={account} />
+  ) : (
+    <Binders account={account} />
+  );
 }

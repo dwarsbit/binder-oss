@@ -1,4 +1,4 @@
-import { Download, LayoutGrid, Library, List, PanelLeft, Sparkles } from "lucide-react";
+import { LayoutGrid, Library, List, PanelLeft, Sparkles, Upload } from "lucide-react";
 import {
   useCallback,
   useEffect,
@@ -16,6 +16,8 @@ import { ItemView } from "@/components/ItemView";
 import { Reader, type ReaderTarget } from "@/components/Reader";
 import { FindBar, SearchDialog } from "@/components/Search";
 import { SettingsDialog } from "@/components/SettingsDialog";
+import { Mark } from "@/components/Mark";
+import { AppLoading } from "@scholarkit/editor/components/AppShell";
 import { clampWidth, Sidebar } from "@/components/Sidebar";
 import { ZoteroDialog } from "@/components/ZoteroDialog";
 import type { Editor as TiptapEditor } from "@tiptap/core";
@@ -235,6 +237,7 @@ export default function App({
   onRenameBinder,
   status,
   account,
+  homeHref,
   projectId,
 }: {
   store: BinderStore;
@@ -246,8 +249,10 @@ export default function App({
   onRenameBinder?: (name: string) => Promise<void>;
   /** What the status bar says in place of "Saved", such as "Saving…". */
   status?: { text: string; warn?: boolean };
-  /** The account, at the foot of the sidebar, where the app has one. */
+  /** The account, at the end of the header, where the app has one. */
   account?: React.ReactNode;
+  /** Where the app's icon goes, where the app has a page for it: the Scholarkit home in the browser. */
+  homeHref?: string;
 }) {
   const [project, setProject] = useState<Project | null>(null);
   // The binder as of the last change, also before the screen shows it.
@@ -1449,24 +1454,25 @@ export default function App({
 
   if (!project) {
     return (
-      <div className="grid h-full place-items-center p-6 text-center">
-        <div>
-          <p className="text-sm text-muted-foreground" role="status">
-            {problem
-              ? t("This binder can't be opened: {problem}", { problem })
-              : t("Opening your binder…")}
-          </p>
-          {problem && onSwitchBinder && (
-            <button
-              type="button"
-              onClick={onSwitchBinder}
-              className="mt-3 h-8 rounded-md border bg-background px-3 text-[13px] font-medium hover:bg-muted"
-            >
-              {t("All binders")}
-            </button>
-          )}
-        </div>
-      </div>
+      <AppLoading
+        mark={<Mark className="size-[22px]" />}
+        failed={Boolean(problem)}
+        status={
+          problem
+            ? t("This binder can't be opened: {problem}", { problem })
+            : t("Opening your binder…")
+        }
+      >
+        {problem && onSwitchBinder && (
+          <button
+            type="button"
+            onClick={onSwitchBinder}
+            className="h-8 rounded-md border bg-background px-3 text-[13px] font-medium hover:bg-muted"
+          >
+            {t("All binders")}
+          </button>
+        )}
+      </AppLoading>
     );
   }
 
@@ -1674,7 +1680,7 @@ export default function App({
       style={{ "--sidebar-width": `${sidebarWidth}px` } as React.CSSProperties}
     >
       <Sidebar
-        account={account}
+        homeHref={homeHref}
         binderName={project.name}
         question={info.question}
         onQuestion={setQuestion}
@@ -1771,7 +1777,7 @@ export default function App({
                   className={HEADER_BUTTON}
                   onClick={() => setExporting(true)}
                 >
-                  <Download className="size-3.5" aria-hidden />
+                  <Upload className="size-3.5" aria-hidden />
                   {t("Export…")}
                 </button>
               )}
@@ -1819,6 +1825,7 @@ export default function App({
                   ))}
                 </div>
               )}
+              {account}
             </header>
 
             {finding && item && (

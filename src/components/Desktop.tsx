@@ -3,6 +3,8 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import App from "@/App";
 import { AccountDialog } from "@/components/AccountDialog";
 import { AccountMenu } from "@/components/AccountMenu";
+import { Mark } from "@/components/Mark";
+import { AppLoading } from "@scholarkit/editor/components/AppShell";
 import { BinderPicker } from "@/components/BinderPicker";
 import {
   folderSync,
@@ -410,8 +412,9 @@ export function Desktop() {
     />
   );
 
-  const accountMenu = (
+  const accountMenu = (place: "header" | "row") => (
     <AccountMenu
+      place={place}
       signedIn={signedIn === true}
       account={account}
       linked={folder ? Boolean(session?.projectId) : undefined}
@@ -432,7 +435,7 @@ export function Desktop() {
       <>
         <BinderPicker
           onOpen={openBinder}
-          account={accountMenu}
+          account={accountMenu("row")}
           fromAccount={fromAccount}
         />
         {accountDialog}
@@ -442,11 +445,10 @@ export function Desktop() {
 
   if (!session || session.dir !== folder) {
     return (
-      <div className="grid h-full place-items-center p-6 text-center">
-        <p className="text-sm text-muted-foreground" role="status">
-          {t("Opening your binder…")}
-        </p>
-      </div>
+      <AppLoading
+        mark={<Mark className="size-[22px]" />}
+        status={t("Opening your binder…")}
+      />
     );
   }
 
@@ -458,7 +460,7 @@ export function Desktop() {
         onSwitchBinder={closeBinder}
         onRenameBinder={renameBinder}
         status={status}
-        account={accountMenu}
+        account={accountMenu("header")}
       />
       {accountDialog}
     </>

@@ -12,6 +12,7 @@ import { useRef, useState } from "react";
 import { cn } from "@scholarkit/editor/lib/cn";
 import { dragWindow } from "@scholarkit/editor/lib/platform";
 import { startPointerDrag } from "@scholarkit/editor/lib/pointer-drag";
+import { HomeMark } from "@scholarkit/editor/components/AppShell";
 import { messageOf } from "@scholarkit/editor/components/Dialog";
 import { viewKey, type View } from "@/lib/items";
 import { Mark } from "./Mark";
@@ -35,8 +36,8 @@ export interface SidebarProps {
   onSwitchBinder?: () => void;
   /** What the assistant is doing, over the settings. */
   assistantStatus?: React.ReactNode;
-  /** The account, under the settings. */
-  account?: React.ReactNode;
+  /** Where the app's icon goes: the Scholarkit home in the browser. Without it the icon opens another binder. */
+  homeHref?: string;
   width: number;
   onResize: (width: number) => void;
 }
@@ -270,7 +271,14 @@ export function Sidebar(props: SidebarProps) {
         className="sidebar-head flex h-11 flex-none items-center gap-1 px-2 text-sm font-semibold"
         onPointerDown={dragWindow}
       >
-        <Mark className="mark mr-1 size-[22px] flex-none" />
+        <HomeMark
+          className="mark"
+          href={props.homeHref}
+          onClick={props.homeHref ? undefined : props.onSwitchBinder}
+          label={props.homeHref ? t("Scholarkit home") : t("All binders")}
+        >
+          <Mark className="size-[22px]" />
+        </HomeMark>
         <BinderName name={props.binderName} onRename={props.onRenameBinder} />
         {props.onSwitchBinder && (
           <button
@@ -354,7 +362,6 @@ export function Sidebar(props: SidebarProps) {
           label={t("Settings")}
           onClick={props.onSettings}
         />
-        {props.account}
       </div>
       <Resizer width={props.width} onResize={props.onResize} />
     </aside>
