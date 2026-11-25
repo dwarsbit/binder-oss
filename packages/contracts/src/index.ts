@@ -145,6 +145,16 @@ export type SocialProvider = z.infer<typeof socialProvider>;
 export const signInMethodsResponse = z.object({ providers: z.array(socialProvider) });
 export type SignInMethodsResponse = z.infer<typeof signInMethodsResponse>;
 
+/** A passkey on the account page. */
+export const passkeyInfo = z.object({
+  id: z.string(),
+  /** Where it is kept, e.g. "iCloud Keychain"; null when unknown. */
+  name: z.string().nullable(),
+  createdAt: z.iso.datetime(),
+  lastUsedAt: z.iso.datetime().nullable(),
+});
+export type PasskeyInfo = z.infer<typeof passkeyInfo>;
+
 /** GET /api/account/sign-in (browser session): how this account signs in. */
 export const accountSignInResponse = z.object({
   /** True when the account has a password. */
@@ -153,6 +163,18 @@ export const accountSignInResponse = z.object({
   providers: z.array(socialProvider),
   /** When this browser session signed in; without a password, deleting needs a recent one. */
   signedInAt: z.iso.datetime(),
+  /** Two-step verification; null when it is off. */
+  twoStep: z
+    .object({
+      /** When the authenticator app was added. */
+      since: z.iso.datetime(),
+      /** Unused recovery codes. */
+      recoveryCodesLeft: z.number().int().nonnegative(),
+    })
+    .nullable(),
+  passkeys: z.array(passkeyInfo),
+  /** Until when this browser skips the code step; null when it isn't trusted. */
+  trustedUntil: z.iso.datetime().nullable(),
 });
 export type AccountSignInResponse = z.infer<typeof accountSignInResponse>;
 
@@ -1172,7 +1194,8 @@ export type CompileResponse = z.infer<typeof compileResponse>;
 
 // Admin portal (/admin): accounts named in ADMIN_EMAILS see every account, its plan and usage.
 // Browser sessions only, from a sign-in at most ADMIN_SIGN_IN_MAX_AGE_MS old (403 sign_in_again
-// otherwise); everyone else gets 404. Admins see account details and sizes, never project files.
+// otherwise) that passed two-step verification or used a passkey (403 two_step_required);
+// everyone else gets 404. Admins see account details and sizes, never project files.
 
 /** An admin's browser session must come from a sign-in at most this old. */
 export const ADMIN_SIGN_IN_MAX_AGE_MS = 12 * 60 * 60_000;
@@ -1247,6 +1270,10 @@ export const adminUserResponse = z.object({
     emailVerified: z.boolean(),
     createdAt: z.iso.datetime(),
     signInMethods: z.array(signInMethod),
+    /** Two-step verification is on. */
+    twoStep: z.boolean(),
+    /** How many passkeys the account has. */
+    passkeys: z.number().int().nonnegative(),
   }),
   plan,
   /** False when this server runs without billing: every account has Pro. */
@@ -1365,6 +1392,7 @@ export const adminActionName = z.enum([
   "mark_verified",
   "grant_plan",
   "end_grant",
+  "turn_off_two_step",
   "delete",
 ]);
 export type AdminActionName = z.infer<typeof adminActionName>;
