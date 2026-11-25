@@ -16,6 +16,7 @@ COPY packages/contracts/package.json packages/contracts/
 COPY packages/editor/package.json packages/editor/
 COPY packages/i18n/package.json packages/i18n/
 COPY packages/updates/package.json packages/updates/
+COPY packages/account-menu/package.json packages/account-menu/
 COPY packages/monitoring/package.json packages/monitoring/
 COPY apps/binder/package.json apps/binder/
 RUN pnpm install --frozen-lockfile --ignore-scripts --filter @scholarkit/binder...
@@ -23,6 +24,7 @@ COPY packages/contracts packages/contracts
 COPY packages/editor packages/editor
 COPY packages/i18n packages/i18n
 COPY packages/updates packages/updates
+COPY packages/account-menu packages/account-menu
 COPY packages/monitoring packages/monitoring
 COPY apps/binder apps/binder
 # Error reports (src/lib/monitoring.ts); without it the build sends none.

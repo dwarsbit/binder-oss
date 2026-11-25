@@ -9,6 +9,7 @@
 - **Export…** shows an arrow pointing out, so it no longer looks like an import.
 - While a binder opens, you see Binder's layout with a spinner where the binder appears, as in Polemic and Cursive.
 - In the browser, your binders are at `app.scholarkit.app/binder/projects`. Links and bookmarks to the old address keep working, and the Binder Clipper follows.
+- The menu under your avatar is the same in Binder, Polemic, Cursive and on your Scholarkit home page. It shows your plan, the storage you use, how much of today's cloud compile time you've used and your active review links, with **Upgrade to Plus** on Free and **Upgrade to Pro** on Plus. **Manage your account** is now **Manage account**.
 
 ## 0.4.0 (2026-11-22)
 

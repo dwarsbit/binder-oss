@@ -11,6 +11,7 @@ describe("catalogs", () => {
         "clipper/src",
         "node_modules/@scholarkit/editor/src",
         "node_modules/@scholarkit/updates/src",
+        "node_modules/@scholarkit/account-menu/src",
       ],
       localesDir: "src/locales",
       check: true,
