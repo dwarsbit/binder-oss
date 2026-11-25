@@ -10,6 +10,7 @@
 - While a binder opens, you see Binder's layout with a spinner where the binder appears, as in Polemic and Cursive.
 - In the browser, your binders are at `app.scholarkit.app/binder/projects`. Links and bookmarks to the old address keep working, and the Binder Clipper follows.
 - The menu under your avatar is the same in Binder, Polemic, Cursive and on your Scholarkit home page. It shows your plan, the storage you use, how much of today's cloud compile time you've used and your active review links, with **Upgrade to Plus** on Free and **Upgrade to Pro** on Plus. **Manage your account** is now **Manage account**.
+- Starting a binder looks the same in Binder, Polemic and Cursive: one card with the name, your research question and **Create**. In the browser the page only makes binders; your binders are on your Scholarkit home page, where you can also rename and delete them. In the desktop app, your recent binders stay under the card.
 
 ## 0.4.0 (2026-11-22)
 

@@ -442,7 +442,7 @@ export function Desktop() {
       <>
         <BinderPicker
           onOpen={openBinder}
-          account={accountMenu("row")}
+          account={accountMenu("header")}
           fromAccount={fromAccount}
         />
         {accountDialog}

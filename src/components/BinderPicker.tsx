@@ -1,5 +1,5 @@
 import { invoke } from "@tauri-apps/api/core";
-import { Pencil, Trash2 } from "lucide-react";
+import { FolderOpen, Pencil, Trash2 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import {
   BUTTON,
@@ -8,6 +8,13 @@ import {
   PRIMARY_BUTTON,
 } from "@scholarkit/editor/components/Dialog";
 import { cn } from "@scholarkit/editor/lib/cn";
+import {
+  START_INPUT,
+  START_LINK,
+  StartFooter,
+  StartPage,
+  StartSection,
+} from "@scholarkit/editor/components/StartPage";
 import { dragWindow, formatOpened } from "@scholarkit/editor/lib/platform";
 import { BINDER_FILE, writeBinderInfo } from "@/lib/binder";
 import type { ServerProject } from "@/lib/server";
@@ -44,7 +51,7 @@ export function BinderPicker({
   fromAccount,
 }: {
   onOpen: (dir: string) => Promise<void>;
-  /** The account menu, at the foot. */
+  /** The account menu, or Sign in, at the top right. */
   account?: React.ReactNode;
   /** Signed in: the account's binders to open here. */
   fromAccount?: FromAccount;
@@ -139,13 +146,13 @@ export function BinderPicker({
     });
 
   return (
-    <div className="relative flex h-full flex-col items-center overflow-y-auto px-4 pt-10 pb-16">
-      <div className="absolute inset-x-0 top-0 h-11" onPointerDown={dragWindow} />
-      <h1 className="mt-auto mb-6 flex flex-none flex-col items-center gap-3 text-lg font-semibold">
-        <Mark className="size-14" />
-        {t("Binder")}
-      </h1>
-      <div className="mb-auto w-full max-w-lg flex-none rounded-xl bg-card p-6 shadow-[var(--pop-shadow)]">
+    <>
+      <StartPage
+        mark={<Mark className="size-11" />}
+        title={t("New binder")}
+        onDrag={dragWindow}
+        account={account}
+      >
         <form
           onSubmit={(event) => {
             event.preventDefault();
@@ -154,25 +161,16 @@ export function BinderPicker({
             else void create();
           }}
         >
-          <div className="flex gap-2">
-            <input
-              ref={nameInput}
-              autoFocus
-              value={name}
-              onChange={(event) => setName(event.target.value)}
-              placeholder={t("New binder name, such as Thesis")}
-              aria-label={t("New binder name")}
-              maxLength={120}
-              className="h-9 min-w-0 flex-1 rounded-md border bg-background px-2.5 text-sm outline-none focus:border-ring"
-            />
-            <button
-              type="submit"
-              disabled={busy}
-              className={cn(PRIMARY_BUTTON, "h-9 px-4")}
-            >
-              {t("Create")}
-            </button>
-          </div>
+          <input
+            ref={nameInput}
+            autoFocus
+            value={name}
+            onChange={(event) => setName(event.target.value)}
+            placeholder={t("Name, such as Thesis")}
+            aria-label={t("Binder name")}
+            maxLength={120}
+            className={START_INPUT}
+          />
           <textarea
             value={question}
             onChange={(event) => setQuestion(event.target.value)}
@@ -181,83 +179,98 @@ export function BinderPicker({
             aria-label={t("Research question")}
             className="mt-2 w-full resize-none rounded-md border bg-background px-2.5 py-2 text-[13px] leading-normal outline-none focus:border-ring"
           />
+          {root && (
+            <p className="mt-1 truncate text-xs text-muted-foreground" title={root}>
+              {t("New binders are folders in {root}.", { root })}
+            </p>
+          )}
+          {problem && !renaming && (
+            <p className="mt-2 text-xs text-destructive" role="alert">
+              {problem}
+            </p>
+          )}
+          <StartFooter
+            create={
+              <button type="submit" disabled={busy} className={PRIMARY_BUTTON}>
+                {t("Create")}
+              </button>
+            }
+          >
+            <button
+              type="button"
+              className={START_LINK}
+              disabled={busy}
+              onClick={() => void openFolder()}
+            >
+              <FolderOpen aria-hidden />
+              {t("Open folder…")}
+            </button>
+          </StartFooter>
         </form>
-        {root && (
-          <p className="mt-1 truncate text-xs text-muted-foreground" title={root}>
-            {t("New binders are folders in {root}.", { root })}
-          </p>
-        )}
-        {problem && !renaming && (
-          <p className="mt-2 text-xs text-destructive" role="alert">
-            {problem}
-          </p>
-        )}
 
-        <h2 className="mt-5 mb-1.5 text-2xs font-semibold tracking-wider text-muted-foreground uppercase">
-          {t("Recent")}
-        </h2>
-        {recent === null ? (
-          <p className="px-1.5 py-1.5 text-sm text-muted-foreground" role="status">
-            {t("Loading…")}
-          </p>
-        ) : recent.length === 0 ? (
-          <p className="px-1.5 py-1.5 text-sm text-muted-foreground">
-            {t("No binders yet. Create one above or open a folder.")}
-          </p>
-        ) : (
-          <ul className="-mx-1 space-y-0.5">
-            {recent.map((binder) => (
-              <li
-                key={binder.path}
-                className="group relative flex items-center rounded-md hover:bg-muted"
-              >
-                <button
-                  type="button"
-                  title={binder.path}
-                  disabled={busy}
-                  onClick={() => void run(() => onOpen(binder.path))}
-                  className="flex min-w-0 flex-1 items-baseline gap-3 px-2.5 py-1.5 text-left"
+        <StartSection title={t("Recent")}>
+          {recent === null ? (
+            <p className="px-1.5 py-1.5 text-sm text-muted-foreground" role="status">
+              {t("Loading…")}
+            </p>
+          ) : recent.length === 0 ? (
+            <p className="px-1.5 py-1.5 text-sm text-muted-foreground">
+              {t("No binders yet. Create one above or open a folder.")}
+            </p>
+          ) : (
+            <ul className="-mx-1 space-y-0.5">
+              {recent.map((binder) => (
+                <li
+                  key={binder.path}
+                  className="group relative flex items-center rounded-md hover:bg-muted"
                 >
-                  <span className="min-w-0 flex-1 truncate text-sm">{binder.name}</span>
-                  <span className="flex-none text-2xs text-muted-foreground group-focus-within:invisible group-hover:invisible">
-                    {formatOpened(binder.openedAt)}
-                  </span>
-                </button>
-                {/* Over the date on hover, so the row keeps its height. */}
-                <div className="absolute inset-y-0 right-1 flex items-center gap-0.5 opacity-0 group-focus-within:opacity-100 group-hover:opacity-100">
                   <button
                     type="button"
-                    aria-label={t("Rename {name}", { name: binder.name })}
-                    title={t("Rename binder")}
-                    onClick={() => {
-                      setProblem(null);
-                      setNewName(binder.name);
-                      setRenaming(binder);
-                    }}
-                    className="grid size-6 place-items-center rounded-md text-muted-foreground hover:bg-foreground/10 hover:text-foreground"
+                    title={binder.path}
+                    disabled={busy}
+                    onClick={() => void run(() => onOpen(binder.path))}
+                    className="flex min-w-0 flex-1 items-baseline gap-3 px-2.5 py-1.5 text-left"
                   >
-                    <Pencil className="size-3.5" aria-hidden />
+                    <span className="min-w-0 flex-1 truncate text-sm">
+                      {binder.name}
+                    </span>
+                    <span className="flex-none text-2xs text-muted-foreground group-focus-within:invisible group-hover:invisible">
+                      {formatOpened(binder.openedAt)}
+                    </span>
                   </button>
-                  <button
-                    type="button"
-                    aria-label={t("Move {name} to the trash", { name: binder.name })}
-                    title={t("Move binder to the trash")}
-                    onClick={() => setDeleting(binder)}
-                    className="grid size-6 place-items-center rounded-md text-muted-foreground hover:bg-foreground/10 hover:text-destructive"
-                  >
-                    <Trash2 className="size-3.5" aria-hidden />
-                  </button>
-                </div>
-              </li>
-            ))}
-          </ul>
-        )}
+                  {/* Over the date on hover, so the row keeps its height. */}
+                  <div className="absolute inset-y-0 right-1 flex items-center gap-0.5 opacity-0 group-focus-within:opacity-100 group-hover:opacity-100">
+                    <button
+                      type="button"
+                      aria-label={t("Rename {name}", { name: binder.name })}
+                      title={t("Rename binder")}
+                      onClick={() => {
+                        setProblem(null);
+                        setNewName(binder.name);
+                        setRenaming(binder);
+                      }}
+                      className="grid size-6 place-items-center rounded-md text-muted-foreground hover:bg-foreground/10 hover:text-foreground"
+                    >
+                      <Pencil className="size-3.5" aria-hidden />
+                    </button>
+                    <button
+                      type="button"
+                      aria-label={t("Move {name} to the trash", { name: binder.name })}
+                      title={t("Move binder to the trash")}
+                      onClick={() => setDeleting(binder)}
+                      className="grid size-6 place-items-center rounded-md text-muted-foreground hover:bg-foreground/10 hover:text-destructive"
+                    >
+                      <Trash2 className="size-3.5" aria-hidden />
+                    </button>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          )}
+        </StartSection>
 
         {fromAccount && elsewhere && elsewhere.length > 0 && (
-          <>
-            <h2 className="mt-5 mb-1.5 text-2xs font-semibold tracking-wider text-muted-foreground uppercase">
-              {t("In your account")}
-            </h2>
+          <StartSection title={t("In your account")}>
             <ul className="-mx-1 space-y-0.5">
               {elsewhere.map((binder) => (
                 <li
@@ -283,21 +296,9 @@ export function BinderPicker({
                 </li>
               ))}
             </ul>
-          </>
+          </StartSection>
         )}
-
-        <div className="mt-4 flex flex-wrap items-center gap-2">
-          <button
-            type="button"
-            className={BUTTON}
-            disabled={busy}
-            onClick={() => void openFolder()}
-          >
-            {t("Open folder…")}
-          </button>
-          {account && <div className="ml-auto w-56">{account}</div>}
-        </div>
-      </div>
+      </StartPage>
 
       {renaming && (
         <Dialog title={t("Rename binder")} onClose={() => setRenaming(null)}>
@@ -357,6 +358,6 @@ export function BinderPicker({
           }}
         />
       )}
-    </div>
+    </>
   );
 }
