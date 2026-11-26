@@ -12,13 +12,17 @@ import { urlOf } from "@/lib/items";
 import { t } from "@scholarkit/i18n";
 
 /** What the field holds, as Add takes it. */
-function readInput(text: string) {
+function readInput(text: string, freePdfs: boolean) {
   const lookup = lookupOf(text);
   if (lookup)
     return {
       kind: lookup.kind,
       hint: {
-        doi: t("A DOI. Binder looks up the work at Crossref."),
+        doi: freePdfs
+          ? t(
+              "A DOI. Binder looks up the work at Crossref, and a free PDF of it at Unpaywall.",
+            )
+          : t("A DOI. Binder looks up the work at Crossref."),
         isbn: t("An ISBN. Binder looks up the book at Open Library."),
         arxiv: t("An arXiv ID. Binder looks up the preprint."),
         pubmed: t("A PubMed ID. Binder looks up the article at PubMed."),
@@ -45,6 +49,7 @@ export function AddDialog({
   onAddNote,
   onZotero,
   onClose,
+  freePdfs = false,
 }: {
   /** Adds a link, a DOI, an ISBN, an arXiv or PubMed ID, or a thought. Rejects with why not. */
   onAddText: (text: string) => Promise<void>;
@@ -52,12 +57,14 @@ export function AddDialog({
   onAddNote: () => void;
   onZotero: () => void;
   onClose: () => void;
+  /** Whether a DOI brings a free PDF along, where there is one. */
+  freePdfs?: boolean;
 }) {
   const [text, setText] = useState("");
   const [busy, setBusy] = useState(false);
   const [problem, setProblem] = useState<string | null>(null);
   const picker = useRef<HTMLInputElement>(null);
-  const input = useMemo(() => readInput(text), [text]);
+  const input = useMemo(() => readInput(text, freePdfs), [text, freePdfs]);
 
   const add = async () => {
     if (!input || busy) return;

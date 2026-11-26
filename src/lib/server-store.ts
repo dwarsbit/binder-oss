@@ -264,6 +264,7 @@ export function serverStore(
         html: isPage(file.contentType) ? new TextDecoder().decode(file.bytes) : "",
       };
     },
+    openAccessPdfs: (doi) => server.openAccessPdfs(doi),
     download: async (url, path) => {
       const file = fetched.get(url) ?? (await server.fetchWeb(url));
       fetched.delete(url);

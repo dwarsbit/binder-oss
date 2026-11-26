@@ -38,6 +38,12 @@ export interface BinderStore {
   fetchWeb?(url: string): Promise<{ url: string; contentType: string; html: string }>;
   /** Saves the file behind a web address into the binder. Not in the demo. */
   download?(url: string, path: string): Promise<void>;
+  /**
+   * Links to free PDFs of the work with this DOI, best first, as the
+   * Scholarkit server finds them at Unpaywall. Empty when there is none.
+   * Only with a Scholarkit account.
+   */
+  openAccessPdfs?(doi: string): Promise<string[]>;
 }
 
 /** The binder with a page, file or folder moved; a folder takes its contents along. */

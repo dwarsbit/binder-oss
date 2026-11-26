@@ -15,6 +15,7 @@
 - Looking up a DOI, an ISBN, an arXiv or a PubMed ID now goes through your Scholarkit account, so it needs you to be signed in. The apps no longer contact Crossref, Open Library and the other sources themselves.
 - Read e-books: an EPUB you add opens in the reader, one chapter at a time, with **Contents** to move between chapters. Highlight, find and quote as in a PDF; a highlight names its chapter, as `ch. 4`. A book from an EPUB gets its title, authors, year, publisher and ISBN from the book. Books locked with DRM can't be opened. See [the binder format](docs/format.md).
 - Make a scanned PDF searchable: when a PDF's pages are pictures, the reader offers **Recognize the text**. Binder recognizes the text on your computer, in the language you pick, and writes it into the PDF, so you can find, select and highlight its words, in Binder and in other apps.
+- When you add a work by its DOI, Binder also saves a free, legal PDF of it when there is one, so you can start reading right away. A work that has a DOI and no file yet gets **Find a free PDF**. Binder finds the PDF at Unpaywall through your Scholarkit account: Unpaywall gets the DOI, never who asked.
 
 ## 0.4.0 (2026-11-22)
 

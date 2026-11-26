@@ -43,6 +43,7 @@ import { dragWindow, openExternal } from "@scholarkit/editor/lib/platform";
 import { WorkspaceProvider, type Workspace } from "@scholarkit/editor/lib/workspace";
 import { ReferencesProvider } from "@scholarkit/editor/references/context";
 import { lookUp, lookupOf } from "@scholarkit/editor/references/lookup";
+import { firstPdf } from "@/lib/free-pdf";
 import {
   zoteroReference,
   type ZoteroItem,
@@ -297,6 +298,9 @@ export default function App({
   const notesEditor = useRef<TiptapEditor | null>(null);
   const [textIndex, setTextIndex] = useState<TextIndex | null>(null);
   const [keeping, setKeeping] = useState(false);
+  // Items Binder is looking for a free PDF for, and the DOIs it found none for.
+  const [findingPdf, setFindingPdf] = useState<ReadonlySet<string>>(new Set());
+  const [noFreePdf, setNoFreePdf] = useState<ReadonlySet<string>>(new Set());
   // The open item's title and path as links last knew them.
   const linked = useRef<{ path: string; title: string } | null>(null);
   const assistant = useSyncExternalStore(subscribeAssistant, assistantSnapshot);
@@ -692,6 +696,7 @@ export default function App({
       if (ref.arxiv) inBinder(sameWork(items, "arxiv", ref.arxiv));
       if (ref.pmid) inBinder(sameWork(items, "pubmed", ref.pmid));
       path = await addItem(itemOfReference(ref));
+      if (path && ref.doi) void findFreePdf(path, ref.doi, { quiet: true });
     } else {
       const url = urlOf(text);
       if (url && !/\s/.test(text.trim())) {
@@ -752,6 +757,59 @@ export default function App({
     return addItem({ title: titleOfUrl(url), kind: "webpage", url });
   };
 
+  /** Points an item at a file just saved next to it. */
+  const attachFile = (path: string, file: string) => {
+    const latest = fresh.current;
+    if (latest && !(latest.files ?? []).includes(file)) {
+      commit({ ...latest, files: [...(latest.files ?? []), file].sort() });
+    }
+    setFilesVersion((n) => n + 1);
+    changeItem(path, { file: baseName(file) });
+    newSources.current.add(path);
+  };
+
+  /**
+   * Saves a free PDF of the work with this DOI as the item's file: the
+   * first of Unpaywall's links that gives a PDF. Quiet, nothing is said
+   * when it fails, as when a DOI is added.
+   */
+  const findFreePdf = async (
+    path: string,
+    doi: string,
+    options: { quiet?: boolean } = {},
+  ) => {
+    if (!store.openAccessPdfs || !store.download) return;
+    const toggle = (on: boolean) =>
+      setFindingPdf((paths) => {
+        const next = new Set(paths);
+        if (on) next.add(path);
+        else next.delete(path);
+        return next;
+      });
+    toggle(true);
+    try {
+      const pdf = await firstPdf(await store.openAccessPdfs(doi), fetchForBinder);
+      if (!pdf) {
+        setNoFreePdf((dois) => new Set(dois).add(doi.toLowerCase()));
+        return;
+      }
+      // The item may have been renamed or deleted while Binder looked.
+      const now = pathNow(path);
+      const source = fresh.current?.pages[now];
+      if (source === undefined || readItem(now, source).file) return;
+      const file = now.replace(/\.md$/i, ".pdf");
+      await store.download(pdf, file);
+      attachFile(now, file);
+      setProblem(null);
+    } catch (error) {
+      if (!options.quiet) {
+        setProblem(t("No free PDF was saved. {error}", { error: messageOf(error) }));
+      }
+    } finally {
+      toggle(false);
+    }
+  };
+
   /** Keeps the text of an item's web page next to it, or the PDF behind its link. */
   const keepWebPage = async (entry: Item) => {
     setKeeping(true);
@@ -766,13 +824,7 @@ export default function App({
       } else {
         await store.writeFile(file, new Blob([found.html], { type: "text/html" }));
       }
-      const latest = fresh.current;
-      if (latest && !(latest.files ?? []).includes(file)) {
-        commit({ ...latest, files: [...(latest.files ?? []), file].sort() });
-      }
-      setFilesVersion((n) => n + 1);
-      changeItem(entry.path, { file: baseName(file) });
-      newSources.current.add(entry.path);
+      attachFile(entry.path, file);
       setProblem(null);
     } catch (error) {
       setProblem(t("The page wasn't kept. {error}", { error: messageOf(error) }));
@@ -1625,6 +1677,8 @@ export default function App({
     />
   );
 
+  const itemLookup = item ? lookupOf(item.doi) : null;
+  const itemDoi = itemLookup?.kind === "doi" ? itemLookup.id : null;
   const itemView = item && source !== null && (
     <div className="contents" onClickCapture={(event) => followPlace(event, item.path)}>
       <ItemView
@@ -1661,6 +1715,13 @@ export default function App({
             : undefined
         }
         keeping={keeping}
+        onFindPdf={
+          store.openAccessPdfs && store.download && itemDoi && !item.file
+            ? () => void findFreePdf(item.path, itemDoi)
+            : undefined
+        }
+        findingPdf={findingPdf.has(item.path)}
+        noFreePdf={Boolean(itemDoi && noFreePdf.has(itemDoi.toLowerCase()))}
         onDelete={() => setDeleting(item)}
         assistant={assistantPanel}
         backlinks={linkedFrom}
@@ -1955,6 +2016,7 @@ export default function App({
       {adding && (
         <AddDialog
           onAddText={addText}
+          freePdfs={Boolean(store.openAccessPdfs && store.download)}
           onAddFiles={(added) => void addFileItems(added)}
           onAddNote={() => {
             setAdding(false);

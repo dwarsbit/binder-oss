@@ -1,4 +1,5 @@
 import { invoke } from "@tauri-apps/api/core";
+import type { OpenAccessResponse } from "@scholarkit/contracts";
 import {
   AccountServer,
   ServerError,
@@ -54,6 +55,23 @@ export const desktopTransport: Transport = async (method, path, body) => {
 export class BinderServer extends AccountServer {
   constructor(send: Transport) {
     super(send, "binder", t("Sign in to your Scholarkit account first."));
+  }
+
+  /**
+   * Links to free PDFs of the work with this DOI, best first. The server
+   * asks Unpaywall; the app never does. Empty when there is none.
+   */
+  async openAccessPdfs(doi: string): Promise<string[]> {
+    try {
+      const answer = await this.call<OpenAccessResponse>(
+        "GET",
+        `/api/lookup/open-access?doi=${encodeURIComponent(doi)}`,
+      );
+      return answer.pdfs;
+    } catch (error) {
+      if (error instanceof ServerError && error.status === 404) return [];
+      throw error;
+    }
   }
 
   /** Fetches a web address on the server. Same origin only, signed in by the session cookie. */

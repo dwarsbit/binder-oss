@@ -123,6 +123,13 @@ async function openSession(dir: string, signedIn: boolean): Promise<Session> {
     projectId: null,
     sync: null,
   };
+  // Free PDFs are found through the account's server, whether the binder syncs or not.
+  if (signedIn) {
+    session.appStore = {
+      ...store,
+      openAccessPdfs: (doi) => server.openAccessPdfs(doi),
+    };
+  }
   const link = await invoke<Link | null>("link_load", { dir }).catch(() => null);
   if (!link) return session;
   session.projectId = link.projectId;
@@ -159,7 +166,7 @@ async function openSession(dir: string, signedIn: boolean): Promise<Session> {
     return work;
   };
   session.appStore = {
-    ...store,
+    ...session.appStore,
     // The folder is read after the first sync, or after a few seconds without one.
     load: async () => {
       await Promise.race([first, new Promise((done) => setTimeout(done, 5_000))]);

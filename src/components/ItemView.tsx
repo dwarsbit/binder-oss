@@ -5,6 +5,7 @@ import {
   ChevronDown,
   ChevronUp,
   ExternalLink,
+  FileDown,
   Trash2,
   X,
 } from "lucide-react";
@@ -300,6 +301,11 @@ export interface ItemViewProps {
   /** Keeps the text of the item's web page; absent where the app can't fetch it. */
   onKeep?: () => void;
   keeping?: boolean;
+  /** Looks for a free PDF of the work by its DOI; absent where Binder can't. */
+  onFindPdf?: () => void;
+  findingPdf?: boolean;
+  /** Whether a free PDF was looked for and none was found. */
+  noFreePdf?: boolean;
   onDelete: () => void;
   /** What the assistant wrote about the item, between its details and the notes. */
   assistant?: React.ReactNode;
@@ -507,19 +513,39 @@ export function ItemView({ focusRef, focusEndRef, titleRef, ...props }: ItemView
                 }
               />
             ))}
-            {!item.file && props.onKeep && (
+            {!item.file && (props.onFindPdf || props.onKeep) && (
               <>
                 <dt>{t("File")}</dt>
                 <dd>
-                  <button
-                    type="button"
-                    className={LINK_BUTTON}
-                    disabled={props.keeping}
-                    onClick={props.onKeep}
-                  >
-                    <Globe className="size-3" aria-hidden />
-                    {props.keeping ? t("Keeping the page…") : t("Keep the page text")}
-                  </button>
+                  {props.onFindPdf &&
+                    (props.noFreePdf && !props.findingPdf ? (
+                      <span className="text-muted-foreground">
+                        {t("No free PDF is known for this DOI.")}
+                      </span>
+                    ) : (
+                      <button
+                        type="button"
+                        className={LINK_BUTTON}
+                        disabled={props.findingPdf}
+                        onClick={props.onFindPdf}
+                      >
+                        <FileDown className="size-3" aria-hidden />
+                        {props.findingPdf
+                          ? t("Looking for a free PDF…")
+                          : t("Find a free PDF")}
+                      </button>
+                    ))}
+                  {props.onKeep && (
+                    <button
+                      type="button"
+                      className={LINK_BUTTON}
+                      disabled={props.keeping}
+                      onClick={props.onKeep}
+                    >
+                      <Globe className="size-3" aria-hidden />
+                      {props.keeping ? t("Keeping the page…") : t("Keep the page text")}
+                    </button>
+                  )}
                 </dd>
               </>
             )}

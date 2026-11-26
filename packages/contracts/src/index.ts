@@ -573,6 +573,11 @@ export const siteResponse = z.object({
   baseUrl: z.url(),
   /** <SITES_URL>/@<username>: the page that lists the owner's sites. */
   ownerPageUrl: z.url(),
+  /**
+   * The themes the owner's plan gives: every theme on Plus and Pro, only "default" on Free. A
+   * server from before plan themes leaves it out: every theme.
+   */
+  themes: z.array(siteTheme).optional(),
 });
 export type SiteResponse = z.infer<typeof siteResponse>;
 
@@ -581,6 +586,8 @@ export type SiteResponse = z.infer<typeof siteResponse>;
  * server now and answers with the SiteInfo. An owner without a username gets one first. slug sets or changes the address; without it the
  * site keeps its address, or takes the suggested one the first time. 409 "slug_taken". theme sets
  * the site's look; without it the site keeps the one it has, or takes "default" the first time.
+ * Themes other than "default" come with Plus and Pro: 403 "theme_unavailable" for another one on
+ * Free, and a site that has one from an earlier plan gets "default" when it is published again.
  */
 export const publishSiteRequest = z.object({
   slug: siteSlug.optional(),
@@ -1627,3 +1634,11 @@ export type LookedUpWork = z.infer<typeof lookedUpWork>;
 /** GET /api/lookup/work: 404 not_found when the source knows no such work. */
 export const lookupWorkResponse = z.object({ work: lookedUpWork });
 export type LookupWorkResponse = z.infer<typeof lookupWorkResponse>;
+
+/** GET /api/lookup/open-access?doi=…: free PDFs of the work with this DOI, as Unpaywall knows them. */
+export const openAccessQuery = z.object({ doi: z.string().min(1).max(220) });
+export type OpenAccessQuery = z.infer<typeof openAccessQuery>;
+
+/** Links to free PDFs, best first; empty when Unpaywall knows none or doesn't know the DOI. */
+export const openAccessResponse = z.object({ pdfs: z.array(z.string()) });
+export type OpenAccessResponse = z.infer<typeof openAccessResponse>;
