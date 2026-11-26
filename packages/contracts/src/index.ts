@@ -289,6 +289,17 @@ export const usageResponse = z.object({
     /** Null: unlimited. */
     limit: z.number().int().positive().nullable(),
   }),
+  /**
+   * The assistant on Scholarkit's model this UTC month; null on Free or when the server has no
+   * model. Left out by servers from before the assistant.
+   */
+  assistant: z
+    .object({
+      usedPercent: z.number().int().min(0).max(100),
+      resetsAt: z.iso.datetime(),
+    })
+    .nullable()
+    .optional(),
 });
 export type UsageResponse = z.infer<typeof usageResponse>;
 
@@ -1700,3 +1711,94 @@ export type OpenAlexKeyResponse = z.infer<typeof openAlexKeyResponse>;
 /** PUT /api/account/openalex-key: checked with OpenAlex once, then kept encrypted. */
 export const openAlexKeyRequest = z.object({ key: z.string().trim().min(8).max(200) });
 export type OpenAlexKeyRequest = z.infer<typeof openAlexKeyRequest>;
+
+// The assistant (one in every app): the apps run the agent loop and their own tools, and ask the
+// model one turn at a time through POST /api/assistant/turn, which runs on Scholarkit's model
+// (Mistral) for Plus and Pro. An own key or a model on the user's computer never goes through it.
+// The messages and tools are in the OpenAI chat format, which Mistral speaks too.
+
+/** A tool call the model asks for; `arguments` is a JSON object as text. */
+export const assistantToolCall = z.object({
+  id: z.string().min(1).max(200),
+  type: z.literal("function"),
+  function: z.object({
+    name: z.string().min(1).max(64),
+    arguments: z.string().max(100_000),
+  }),
+});
+export type AssistantToolCall = z.infer<typeof assistantToolCall>;
+
+export const assistantMessage = z.discriminatedUnion("role", [
+  z.object({ role: z.literal("system"), content: z.string() }),
+  z.object({ role: z.literal("user"), content: z.string() }),
+  z.object({
+    role: z.literal("assistant"),
+    content: z.string(),
+    tool_calls: z.array(assistantToolCall).max(32).optional(),
+  }),
+  z.object({
+    role: z.literal("tool"),
+    tool_call_id: z.string().min(1).max(200),
+    content: z.string(),
+  }),
+]);
+export type AssistantMessage = z.infer<typeof assistantMessage>;
+/** The model's answer to one turn: text, tool calls or both. */
+export type AssistantReply = Extract<AssistantMessage, { role: "assistant" }>;
+
+/** A tool the model may call; `parameters` is a JSON Schema object. */
+export const assistantToolSpec = z.object({
+  type: z.literal("function"),
+  function: z.object({
+    name: z.string().regex(/^[a-zA-Z0-9_-]{1,64}$/),
+    description: z.string().max(2000),
+    parameters: z.record(z.string(), z.unknown()),
+  }),
+});
+export type AssistantToolSpec = z.infer<typeof assistantToolSpec>;
+
+/** Which app asks, for the usage counts. */
+export const assistantApp = z.enum(["polemic", "cursive", "binder"]);
+export type AssistantApp = z.infer<typeof assistantApp>;
+
+/**
+ * POST /api/assistant/turn: one model turn. Answers a stream of server-sent events, each a JSON
+ * `assistantTurnEvent`: text as it comes, then `done` with the whole reply (or `error`). Before
+ * the stream starts it answers notices instead: 401 unauthorized, 403 plus_needed (Free),
+ * 429 assistant_used_up (this month's share is used) or rate_limited, 413 too_long,
+ * 503 assistant_off (no model on this server), 502 model_unavailable.
+ */
+export const assistantTurnRequest = z.object({
+  app: assistantApp,
+  /** The conversation, the system message first. */
+  messages: z.array(assistantMessage).min(1).max(400),
+  tools: z.array(assistantToolSpec).max(48).default([]),
+});
+export type AssistantTurnRequest = z.input<typeof assistantTurnRequest>;
+
+export const assistantTurnEvent = z.discriminatedUnion("type", [
+  z.object({ type: z.literal("text"), delta: z.string() }),
+  z.object({
+    type: z.literal("done"),
+    message: assistantMessage,
+    /** This month's share used after this turn, rounded to the nearest whole percent, at most 100. */
+    usedPercent: z.number().int().min(0).max(100),
+  }),
+  /** The model failed after the stream started; what was sent so far stands. */
+  z.object({ type: z.literal("error"), error: z.string(), message: z.string() }),
+]);
+export type AssistantTurnEvent = z.infer<typeof assistantTurnEvent>;
+
+/**
+ * GET /api/assistant/access: whether the caller may use Scholarkit's model, before any question,
+ * so the apps show the upgrade notice or the share used at once. Same notices as a turn
+ * (401, 403 plus_needed, 503 assistant_off); a used-up month answers 200 with usedPercent 100.
+ */
+export const assistantAccessResponse = z.object({
+  /** Who runs the model, for "Your question goes to Mistral". */
+  provider: z.string(),
+  usedPercent: z.number().int().min(0).max(100),
+  /** Start of the next UTC month, when the share starts again. */
+  resetsAt: z.iso.datetime(),
+});
+export type AssistantAccessResponse = z.infer<typeof assistantAccessResponse>;
