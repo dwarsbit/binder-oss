@@ -324,6 +324,20 @@ export type PlansResponse = z.infer<typeof plansResponse>;
 /** Hocuspocus endpoint, on the services app's origin (ws: or wss:). */
 export const SYNC_PATH = "/api/sync";
 
+/**
+ * POST /api/projects/:id/sync-ticket (desktop token only): a ticket a desktop app opens the
+ * project's live connection at SYNC_PATH with, in place of its token, which stays in the app's
+ * native side. Good for one project, for expiresInSeconds; the app asks for a new one on each
+ * reconnect. `shared` says whether anyone else is in the project (the owner has members, or you
+ * are one): desktop apps connect live only then.
+ */
+export const syncTicketResponse = z.object({
+  ticket: z.string(),
+  shared: z.boolean(),
+  expiresInSeconds: z.number().int().positive(),
+});
+export type SyncTicketResponse = z.infer<typeof syncTicketResponse>;
+
 /** What a user may do in a project. Owners and editors write while the owner's storage has room. */
 export const projectRole = z.enum(["owner", "editor", "commenter", "viewer"]);
 export type ProjectRole = z.infer<typeof projectRole>;
