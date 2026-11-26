@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.5.0 (unreleased)
+## 0.5.0 (2026-11-26)
 
 - **Add to binder** has four tabs. **Reference** takes a link, a DOI, an ISBN, an arXiv or PubMed ID, or a PDF or EPUB you drop or choose. **Find a paper** is new: search OpenAlex's 480 million works by their title or authors as you type, and add one with its details, and its free PDF when there is one. Plus finds titles and authors; Pro also shows each paper's year, journal and free PDF as you choose. On any plan, add your own free OpenAlex key under **Settings**, in **Paper search**. **Zotero** adds works from your Zotero libraries, which **Add from Zotero…** opens too. **Note** keeps a thought in your inbox, or opens it as a note to write more.
 - When something goes wrong, Binder sends us an error report so we can fix it: what failed and where in its code, never your text, file names or email address. In the desktop app, turn it off under **Settings**, in **Error reports**.
