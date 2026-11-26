@@ -13,23 +13,30 @@ import {
   type NewItem,
   type Status,
 } from "./binder";
+import { inList, type SavedList } from "./lists";
 import { t } from "@scholarkit/i18n";
 
-/** What the lists show: the inbox, the reading list, the notes, or the items with a tag. */
+/** What the lists show: the inbox, the reading list, the notes, a saved list, or the items with a tag. */
 export type View =
   | { kind: "inbox" }
   | { kind: "reading" }
   | { kind: "notes" }
+  | { kind: "list"; name: string }
   | { kind: "tag"; tag: string };
 
 /** The statuses on the reading list, in the order of its board's columns. */
 export const READING: Status[] = ["to-read", "reading", "processed", "set-aside"];
 
 export const viewKey = (view: View) =>
-  view.kind === "tag" ? `tag:${view.tag}` : view.kind;
+  view.kind === "tag"
+    ? `tag:${view.tag}`
+    : view.kind === "list"
+      ? `list:${view.name}`
+      : view.kind;
 
 export function viewOfKey(key: string | null): View {
   if (key?.startsWith("tag:")) return { kind: "tag", tag: key.slice(4) };
+  if (key?.startsWith("list:")) return { kind: "list", name: key.slice(5) };
   if (key === "reading" || key === "notes") return { kind: key };
   return { kind: "inbox" };
 }
@@ -41,10 +48,12 @@ export const viewTitle = (view: View) =>
       ? t("Reading list")
       : view.kind === "notes"
         ? t("Notes")
-        : view.tag;
+        : view.kind === "list"
+          ? view.name
+          : view.tag;
 
-/** Whether an item shows in a view. */
-export function inView(item: Item, view: View): boolean {
+/** Whether an item shows in a view. A saved list's filters come from `lists`. */
+export function inView(item: Item, view: View, lists: SavedList[] = []): boolean {
   switch (view.kind) {
     case "inbox":
       return item.status === "inbox";
@@ -52,8 +61,13 @@ export function inView(item: Item, view: View): boolean {
       return (
         item.status !== null && item.status !== "inbox" && !isOwnWriting(item.kind)
       );
+    // Every note and thought, also those still in the inbox.
     case "notes":
-      return isOwnWriting(item.kind) && item.status !== "inbox";
+      return isOwnWriting(item.kind);
+    case "list": {
+      const list = lists.find((entry) => entry.name === view.name);
+      return list ? inList(item, list) : false;
+    }
     case "tag":
       return item.tags.includes(view.tag);
   }

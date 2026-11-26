@@ -2,6 +2,7 @@ import {
   FolderOpen,
   Inbox,
   ListChecks,
+  ListFilter,
   NotebookPen,
   Plus,
   Search,
@@ -27,6 +28,9 @@ export interface SidebarProps {
   onView: (view: View) => void;
   counts: Record<"inbox" | "reading" | "notes", number>;
   tags: Array<{ tag: string; count: number }>;
+  /** The saved lists, with how many items each shows. */
+  lists: Array<{ name: string; count: number }>;
+  onNewList: () => void;
   onAdd: () => void;
   onSearch: () => void;
   onSettings: () => void;
@@ -334,6 +338,31 @@ export function Sidebar(props: SidebarProps) {
             hint={t("Cmd/Ctrl + K")}
             onClick={props.onSearch}
           />
+        </nav>
+
+        <nav aria-label={t("Saved lists")} className="mt-3 flex flex-col gap-px">
+          <h2 className="flex h-7 items-center pr-1 pl-2 text-2xs font-normal text-muted-foreground">
+            <span className="flex-1">{t("Lists")}</span>
+            <button
+              type="button"
+              aria-label={t("New list")}
+              title={t("New list")}
+              onClick={props.onNewList}
+              className="grid size-6 place-items-center rounded-md hover:bg-accent hover:text-foreground"
+            >
+              <Plus className={ICON} aria-hidden />
+            </button>
+          </h2>
+          {props.lists.map((list) => (
+            <NavRow
+              key={list.name}
+              icon={<ListFilter className={ICON} aria-hidden />}
+              label={list.name}
+              count={list.count}
+              active={active === `list:${list.name}`}
+              onClick={() => props.onView({ kind: "list", name: list.name })}
+            />
+          ))}
         </nav>
 
         {props.tags.length > 0 && (

@@ -52,6 +52,7 @@ on screen than on paper?
 | ----------- | ----------------------------------------------------------------------------------------------------- |
 | `binder`    | The version of the format, a whole number. A folder with this property is a binder.                   |
 | `assistant` | `false` keeps the assistant out of this binder. Without it, the assistant is on where you set one up. |
+| `lists`     | The saved lists in the sidebar: see [Lists](#lists).                                                  |
 
 The body is the research question, in Markdown. It can be empty.
 
@@ -60,6 +61,50 @@ file when you first write down the research question.
 
 A binder whose `binder` is higher than the version this Binder knows
 opens read-only, with a message to update Binder.
+
+### Lists
+
+A saved list shows the items that pass all of its filters. `lists` holds
+them in the order the sidebar shows them, one entry each:
+
+```markdown
+---
+binder: 1
+lists:
+  - name: Ready to read
+    status: [to-read]
+    has-file: true
+  - name: Recent articles on methods
+    kind: [article]
+    tags: [methods, diary study]
+    year-from: 2019
+    author: Okafor
+---
+```
+
+| Property       | Value                                                                                                      |
+| -------------- | ---------------------------------------------------------------------------------------------------------- |
+| `name`         | The list's name, as the sidebar shows it. Each list in a binder has its own name.                          |
+| `status`       | Items with one of these statuses, as a list.                                                               |
+| `kind`         | Items of one of these kinds, as a list.                                                                    |
+| `tags`         | Items with at least one of these tags, as a list.                                                          |
+| `year-from`    | Items published in this year or later.                                                                     |
+| `year-to`      | Items published in this year or earlier.                                                                   |
+| `added-within` | Items added in the last so many days, counting today.                                                      |
+| `has-file`     | `true`: items with an original file. `false`: items without one.                                           |
+| `author`       | Items with an author whose name holds this text. Upper and lower case count the same.                      |
+| `published-in` | Items whose `published-in` holds this text, such as a journal's name. Upper and lower case count the same. |
+
+A list without filters shows every item. A filter Binder doesn't know is
+kept as written, and the list then shows no items, so that a newer filter
+never shows too much.
+
+Without `lists`, the sidebar shows four lists to start with: **Added this
+week** (`added-within: 7`), **Ready to read** (`status: [to-read]`,
+`has-file: true`), **Missing a PDF** (`kind: [article, book, chapter]`,
+`has-file: false`) and **Books and chapters** (`kind: [book, chapter]`).
+Binder writes them into `binder.md` the first time you change a list.
+With `lists: []`, the sidebar shows none.
 
 ## An item
 

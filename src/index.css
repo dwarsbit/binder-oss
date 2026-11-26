@@ -1217,3 +1217,55 @@ select.prop-input {
     flex-wrap: wrap;
   }
 }
+
+/* What a chip in a saved list's filter bar opens. */
+.filter-popover {
+  position: absolute;
+  top: calc(100% + 4px);
+  z-index: 30;
+  min-width: 168px;
+  padding: 4px;
+  font-size: 13px;
+}
+.filter-option {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  height: 28px;
+  padding: 0 8px;
+  border-radius: 5px;
+  text-align: left;
+  white-space: nowrap;
+}
+.filter-option:enabled:hover,
+.filter-option:focus-visible {
+  background: var(--accent);
+  outline: none;
+}
+.check-box {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 14px;
+  height: 14px;
+  border: 1px solid var(--input, var(--border));
+  border-radius: 4px;
+  background: var(--background);
+}
+.check-box-on {
+  border-color: var(--primary-edge);
+  background: var(--primary-fill);
+  color: var(--primary-foreground);
+}
+.filter-input {
+  height: 28px;
+  padding: 0 8px;
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  background: var(--background);
+  outline: none;
+}
+.filter-input:focus {
+  border-color: var(--ring);
+}

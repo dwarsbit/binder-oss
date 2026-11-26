@@ -19,6 +19,15 @@ import { SettingsDialog } from "@/components/SettingsDialog";
 import { Mark } from "@/components/Mark";
 import { AppLoading } from "@scholarkit/editor/components/AppShell";
 import { clampWidth, Sidebar } from "@/components/Sidebar";
+import { FilterBar, ListName } from "@/components/FilterBar";
+import {
+  freeListName,
+  inList,
+  readLists,
+  writeLists,
+  type Filters,
+  type SavedList,
+} from "@/lib/lists";
 import type { Editor as TiptapEditor } from "@tiptap/core";
 import { HEADER_BUTTON } from "@scholarkit/editor/components/Dialog";
 import { Editor } from "@scholarkit/editor/components/Editor";
@@ -292,6 +301,10 @@ export default function App({
     null,
   );
   const [deleting, setDeleting] = useState<Item | null>(null);
+  /** The saved list waiting on a yes before it goes. */
+  const [deletingList, setDeletingList] = useState<string | null>(null);
+  /** Whether the shown list's name is being typed. */
+  const [renamingList, setRenamingList] = useState(false);
   const [dropping, setDropping] = useState(false);
   const [sidebarWidth, setSidebarWidth] = useState(() =>
     clampWidth(loadSidebarWidth()),
@@ -386,9 +399,14 @@ export default function App({
         : { format: FORMAT, question: "", assistant: true },
     [project],
   );
+  const lists = useMemo(() => readLists(project?.pages[BINDER_FILE]), [project]);
+  const list =
+    view.kind === "list"
+      ? (lists.find((entry) => entry.name === view.name) ?? null)
+      : null;
   const shown = useMemo(
-    () => items.filter((item) => inView(item, view)),
-    [items, view],
+    () => items.filter((item) => inView(item, view, lists)),
+    [items, view, lists],
   );
   const counts = useMemo(() => viewCounts(items), [items]);
   const tags = useMemo(() => tagCounts(items), [items]);
@@ -398,6 +416,14 @@ export default function App({
     [selected, source],
   );
   const board = view.kind === "reading" && layout === "board";
+
+  // A list that is gone, deleted or renamed elsewhere, makes way for the inbox.
+  useEffect(() => {
+    if (project && view.kind === "list" && !list) {
+      setView({ kind: "inbox" });
+      saveView("inbox");
+    }
+  }, [project, view, list]);
 
   // Links name the open item by its title as it was when it was opened.
   useEffect(() => {
@@ -549,6 +575,7 @@ export default function App({
 
   const showView = (next: View) => {
     syncFileName();
+    setRenamingList(false);
     setReading(null);
     setView(next);
     saveView(viewKey(next));
@@ -566,7 +593,12 @@ export default function App({
     writeSource(path, next);
     const before = readItem(path, current);
     const after = readItem(path, next);
-    if (path === selected && inView(before, view) && !inView(after, view) && !board) {
+    if (
+      path === selected &&
+      inView(before, view, lists) &&
+      !inView(after, view, lists) &&
+      !board
+    ) {
       const at = shown.findIndex((entry) => entry.path === path);
       const following = shown[at + 1] ?? shown[at - 1] ?? null;
       setSelected(following?.path ?? null);
@@ -875,7 +907,7 @@ export default function App({
     const found = itemsOf(fresh.current ?? { name: "", folders: [], pages: {} }).find(
       (entry) => entry.path === path,
     );
-    if (found && !inView(found, view)) {
+    if (found && !inView(found, view, lists)) {
       const home = homeOf(found);
       setView(home);
       saveView(viewKey(home));
@@ -1347,6 +1379,66 @@ export default function App({
     writeSource(BINDER_FILE, writeBinderInfo(latest.pages[BINDER_FILE], question));
   };
 
+  /** Writes the saved lists, changed from the ones in `binder.md` as it is now. */
+  const changeLists = (change: (lists: SavedList[]) => SavedList[]) => {
+    const latest = fresh.current;
+    if (!latest) return;
+    const source = latest.pages[BINDER_FILE];
+    writeSource(BINDER_FILE, writeLists(source, change(readLists(source))));
+  };
+
+  /** Starts a list with no filters, and its name ready to type. */
+  const newList = () => {
+    const name = freeListName(lists, t("New list"));
+    changeLists((current) => [...current, { name, filters: {}, unknown: [] }]);
+    showView({ kind: "list", name });
+    setRenamingList(true);
+  };
+
+  /** Changes a list's filters. An open item they leave out makes way for the list's first. */
+  const setFilters = (name: string, filters: Filters) => {
+    changeLists((current) =>
+      current.map((entry) => (entry.name === name ? { ...entry, filters } : entry)),
+    );
+    const open = items.find((entry) => entry.path === selected);
+    if (open && !inList(open, { name, filters, unknown: [] })) {
+      setSelected(null);
+      setOpened((n) => n + 1);
+    }
+  };
+
+  /** Gives a list another name. Throws when another list has it. */
+  const renameList = (name: string, wanted: string) => {
+    if (freeListName(lists, wanted, name) !== wanted)
+      throw new Error(t("Another list has this name."));
+    changeLists((current) =>
+      current.map((entry) =>
+        entry.name === name ? { ...entry, name: wanted } : entry,
+      ),
+    );
+    setView({ kind: "list", name: wanted });
+    saveView(viewKey({ kind: "list", name: wanted }));
+  };
+
+  const duplicateList = (name: string) => {
+    const copy = freeListName(lists, t("{name} copy", { name }));
+    changeLists((current) => {
+      const at = current.findIndex((entry) => entry.name === name);
+      if (at < 0) return current;
+      return [
+        ...current.slice(0, at + 1),
+        { ...current[at], name: copy },
+        ...current.slice(at + 1),
+      ];
+    });
+    showView({ kind: "list", name: copy });
+  };
+
+  const deleteList = (name: string) => {
+    changeLists((current) => current.filter((entry) => entry.name !== name));
+    if (view.kind === "list" && view.name === name) showView({ kind: "inbox" });
+  };
+
   /** Adds files pasted or dropped into notes to the binder's attachments folder. */
   const addAttachments = async (files: File[]): Promise<string[]> => {
     const paths: string[] = [];
@@ -1670,7 +1762,9 @@ export default function App({
         ? t("Nothing on your reading list yet. Move items here from your inbox.")
         : view.kind === "notes"
           ? t("No notes yet.")
-          : t("No items with this tag.");
+          : view.kind === "list"
+            ? t("No items pass these filters.")
+            : t("No items with this tag.");
 
   const assistantNote = (entry: Item | null) => {
     const written = entry ? project.pages[assistantPathOf(entry.path)] : undefined;
@@ -1851,6 +1945,11 @@ export default function App({
         onView={showView}
         counts={counts}
         tags={tags}
+        lists={lists.map((entry) => ({
+          name: entry.name,
+          count: items.filter((other) => inList(other, entry)).length,
+        }))}
+        onNewList={newList}
         onAdd={() => {
           setNavOpen(false);
           setAdding(lastAddTab());
@@ -1930,7 +2029,16 @@ export default function App({
               >
                 <PanelLeft className="size-4" aria-hidden />
               </button>
-              <h1 className="truncate text-sm font-semibold">{title}</h1>
+              {list ? (
+                <ListName
+                  name={list.name}
+                  renaming={renamingList}
+                  onRenaming={setRenamingList}
+                  onRename={(wanted) => renameList(list.name, wanted)}
+                />
+              ) : (
+                <h1 className="truncate text-sm font-semibold">{title}</h1>
+              )}
               <span className="flex-1 truncate text-muted-foreground tabular-nums">
                 {tn(shown.length, "{count} item", "{count} items")}
               </span>
@@ -1991,6 +2099,18 @@ export default function App({
               {account}
             </header>
 
+            {list && (
+              <FilterBar
+                key={list.name}
+                list={list}
+                tags={tags.map((entry) => entry.tag)}
+                onChange={(filters) => setFilters(list.name, filters)}
+                onRename={() => setRenamingList(true)}
+                onDuplicate={() => duplicateList(list.name)}
+                onDelete={() => setDeletingList(list.name)}
+              />
+            )}
+
             {finding && item && (
               <FindBar
                 text={finding.text}
@@ -2016,7 +2136,7 @@ export default function App({
                     items={shown}
                     selected={selected}
                     groups={view.kind === "reading"}
-                    showStatus={view.kind === "tag"}
+                    showStatus={view.kind !== "inbox" && view.kind !== "reading"}
                     empty={emptyText}
                     onOpen={open}
                     proposals={proposals}
@@ -2084,6 +2204,18 @@ export default function App({
           listItems={shown}
           allItems={items}
           onClose={() => setExporting(false)}
+        />
+      )}
+      {deletingList !== null && (
+        <ConfirmDialog
+          title={t("Delete the list “{name}”?", { name: deletingList })}
+          body={t("Only the list goes. The items in it stay in your binder.")}
+          confirmLabel={t("Delete list")}
+          onCancel={() => setDeletingList(null)}
+          onConfirm={() => {
+            deleteList(deletingList);
+            setDeletingList(null);
+          }}
         />
       )}
       {deleting && (

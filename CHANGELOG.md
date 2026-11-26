@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.6.0 (unreleased)
+
+- **Lists** in the sidebar show the items that pass the filters you choose: status, kind, tag, year, when they were added, whether they have a file, author and where they were published. Click **+** next to **Lists** to start one, click a filter to change it and **Filter** to add one. A binder starts with four lists: **Added this week**, **Ready to read**, **Missing a PDF** and **Books and chapters**; rename, duplicate or delete them from the **⋯** menu. Lists are kept in the binder, so they are the same on every computer and in the browser. See [the binder format](docs/format.md).
+- **Notes** shows every note and thought, also a thought still in your inbox. A thought leaves the inbox with **Take out of inbox**, and stays in **Notes**.
+
 ## 0.5.0 (2026-11-26)
 
 - **Add to binder** has four tabs. **Reference** takes a link, a DOI, an ISBN, an arXiv or PubMed ID, or a PDF or EPUB you drop or choose. **Find a paper** is new: search OpenAlex's 480 million works by their title or authors as you type, and add one with its details, and its free PDF when there is one. Plus finds titles and authors; Pro also shows each paper's year, journal and free PDF as you choose. On any plan, add your own free OpenAlex key under **Settings**, in **Paper search**. **Zotero** adds works from your Zotero libraries, which **Add from Zotero…** opens too. **Note** keeps a thought in your inbox, or opens it as a note to write more.

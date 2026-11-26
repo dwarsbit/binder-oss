@@ -244,7 +244,7 @@ function AcceptBar({
   return (
     <div className="accept-bar" role="group" aria-label={t("Move out of the inbox")}>
       <span className="mr-1 text-muted-foreground">
-        {item.kind === "thought" ? t("Keep this thought:") : t("Move to:")}
+        {item.kind === "thought" ? t("In your inbox and in Notes.") : t("Move to:")}
       </span>
       {item.kind === "thought" ? (
         <button
@@ -252,7 +252,7 @@ function AcceptBar({
           onClick={() => onStatus(null)}
           className="h-7 rounded-md border border-primary-edge bg-primary-fill px-2.5 text-xs font-medium text-primary-foreground hover:bg-primary-fill/85"
         >
-          {t("Keep in notes")}
+          {t("Take out of inbox")}
         </button>
       ) : (
         READING.map((status, index) => (
