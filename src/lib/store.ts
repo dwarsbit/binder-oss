@@ -3,6 +3,7 @@ import { mediaType } from "@scholarkit/editor/lib/file-types";
 import type { Project } from "@scholarkit/editor/lib/paths";
 import type { Folder } from "@scholarkit/editor/lib/link-sync";
 import type { AssetRef, PageChange } from "@scholarkit/editor/lib/project-doc";
+import type { PaperSearch } from "@scholarkit/editor/references/lookup";
 import { t } from "@scholarkit/i18n";
 
 /**
@@ -44,6 +45,20 @@ export interface BinderStore {
    * Only with a Scholarkit account.
    */
   openAccessPdfs?(doi: string): Promise<string[]>;
+  /**
+   * Papers by their title or authors, as the Scholarkit server finds them
+   * at OpenAlex. Only with a Scholarkit account.
+   */
+  searchPapers?(q: string): Promise<PaperSearch>;
+  /** The OpenAlex key kept with the account, for paper search on any plan. */
+  openAlexKey?: OpenAlexKeyStore;
+}
+
+/** An OpenAlex key kept with the Scholarkit account; only its last four characters come back. */
+export interface OpenAlexKeyStore {
+  get(): Promise<{ saved: boolean; ending: string | null }>;
+  save(key: string): Promise<{ saved: boolean; ending: string | null }>;
+  forget(): Promise<{ saved: boolean; ending: string | null }>;
 }
 
 /** The binder with a page, file or folder moved; a folder takes its contents along. */

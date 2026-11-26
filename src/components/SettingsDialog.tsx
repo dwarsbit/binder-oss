@@ -1,4 +1,6 @@
 import { open } from "@tauri-apps/plugin-dialog";
+import type { OpenAlexKeyStore } from "@/lib/store";
+import { PaperSearchSettings } from "./PaperSearchSettings";
 import {
   Boxes,
   Cloud,
@@ -678,11 +680,14 @@ export function SettingsDialog({
   onClose,
   assistantOn,
   onAssistantOn,
+  openAlexKey,
 }: {
   onClose: () => void;
   /** Whether this binder lets the assistant in. */
   assistantOn: boolean;
   onAssistantOn: (on: boolean) => void;
+  /** The OpenAlex key kept with the account; absent without one. */
+  openAlexKey?: OpenAlexKeyStore;
 }) {
   return (
     <Dialog title={t("Settings")} onClose={onClose}>
@@ -699,6 +704,7 @@ export function SettingsDialog({
             "To add a work by its DOI or ISBN, paste it in Add to binder. In a note, type a DOI or an ISBN after @ to cite it.",
           )}
         </p>
+        {openAlexKey && <PaperSearchSettings keys={openAlexKey} />}
         {isDesktop && reportsBuiltIn && <ErrorReportSettings />}
         {updater && <UpdatesSettings updater={updater} app="Binder" />}
       </div>

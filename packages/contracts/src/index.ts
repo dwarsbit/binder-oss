@@ -1580,7 +1580,7 @@ export * from "./paths.js";
  * (Open Library), an arXiv ID (DataCite, by the DOI arXiv gives every preprint) or a PubMed ID
  * (PubMed; `PMC…` for PubMed Central). The apps never ask those services themselves.
  */
-export const lookupKind = z.enum(["doi", "isbn", "arxiv", "pubmed"]);
+export const lookupKind = z.enum(["doi", "isbn", "arxiv", "pubmed", "openalex"]);
 export type LookupKind = z.infer<typeof lookupKind>;
 
 export const LOOKUP_IDS: Record<LookupKind, RegExp> = {
@@ -1588,6 +1588,8 @@ export const LOOKUP_IDS: Record<LookupKind, RegExp> = {
   isbn: /^(?:\d{9}[\dX]|97[89]\d{10})$/,
   arxiv: /^(?:\d{4}\.\d{4,5}|[a-z]+(?:-[a-z]+)?(?:\.[A-Z]{2})?\/\d{7})$/,
   pubmed: /^(?:\d{1,9}|PMC\d{1,9})$/,
+  /** A work's OpenAlex ID, as paper search gives it: needs OPENALEX_API_KEY. */
+  openalex: /^W\d{1,12}$/,
 };
 
 /** GET /api/lookup/work?kind=…&id=… */
@@ -1642,3 +1644,39 @@ export type OpenAccessQuery = z.infer<typeof openAccessQuery>;
 /** Links to free PDFs, best first; empty when Unpaywall knows none or doesn't know the DOI. */
 export const openAccessResponse = z.object({ pdfs: z.array(z.string()) });
 export type OpenAccessResponse = z.infer<typeof openAccessResponse>;
+
+/**
+ * GET /api/lookup/search?q=…: papers whose title or authors match the words, from OpenAlex. It
+ * runs on Scholarkit's key for Pro, or on the caller's own key: sent as an `OpenAlex-Key` header
+ * (also without an account) or kept with the account. Without either: 403 pro_needed.
+ */
+export const paperSearchQuery = z.object({ q: z.string().trim().min(3).max(200) });
+export type PaperSearchQuery = z.infer<typeof paperSearchQuery>;
+
+/** A paper search found: the work as a lookup has it, and whether a free PDF of it is known. */
+export const foundPaper = lookedUpWork.extend({
+  /** OpenAlex's ID, e.g. W2741809807. */
+  openAlexId: z.string(),
+  freePdf: z.boolean(),
+  /**
+   * False when the search found only the title, authors and DOI (Plus): the apps look the work
+   * up by its OpenAlex ID (`kind=openalex`) before adding it.
+   */
+  detailed: z.boolean(),
+});
+export type FoundPaper = z.infer<typeof foundPaper>;
+
+export const paperSearchResponse = z.object({ works: z.array(foundPaper) });
+export type PaperSearchResponse = z.infer<typeof paperSearchResponse>;
+
+/** GET /api/account/openalex-key: whether the account keeps an own key, and how it ends. */
+export const openAlexKeyResponse = z.object({
+  saved: z.boolean(),
+  /** The key's last four characters. */
+  ending: z.string().nullable(),
+});
+export type OpenAlexKeyResponse = z.infer<typeof openAlexKeyResponse>;
+
+/** PUT /api/account/openalex-key: checked with OpenAlex once, then kept encrypted. */
+export const openAlexKeyRequest = z.object({ key: z.string().trim().min(8).max(200) });
+export type OpenAlexKeyRequest = z.infer<typeof openAlexKeyRequest>;

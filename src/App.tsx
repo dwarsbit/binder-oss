@@ -8,7 +8,7 @@ import {
   useSyncExternalStore,
 } from "react";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
-import { AddDialog } from "@/components/AddDialog";
+import { AddDialog, lastAddTab, type AddTab } from "@/components/AddDialog";
 import { AssistantPanel } from "@/components/AssistantPanel";
 import { ExportDialog } from "@/components/ExportDialog";
 import { Board, ItemList } from "@/components/ItemList";
@@ -19,7 +19,6 @@ import { SettingsDialog } from "@/components/SettingsDialog";
 import { Mark } from "@/components/Mark";
 import { AppLoading } from "@scholarkit/editor/components/AppShell";
 import { clampWidth, Sidebar } from "@/components/Sidebar";
-import { ZoteroDialog } from "@/components/ZoteroDialog";
 import type { Editor as TiptapEditor } from "@tiptap/core";
 import { HEADER_BUTTON } from "@scholarkit/editor/components/Dialog";
 import { Editor } from "@scholarkit/editor/components/Editor";
@@ -42,7 +41,13 @@ import {
 import { dragWindow, openExternal } from "@scholarkit/editor/lib/platform";
 import { WorkspaceProvider, type Workspace } from "@scholarkit/editor/lib/workspace";
 import { ReferencesProvider } from "@scholarkit/editor/references/context";
-import { lookUp, lookupOf } from "@scholarkit/editor/references/lookup";
+import {
+  foundWork,
+  lookUp,
+  lookupOf,
+  paperDetails,
+  type FoundPaper,
+} from "@scholarkit/editor/references/lookup";
 import { firstPdf } from "@/lib/free-pdf";
 import {
   zoteroReference,
@@ -245,6 +250,7 @@ export default function App({
   account,
   homeHref,
   projectId,
+  onPlans,
 }: {
   store: BinderStore;
   /** Opens another binder, where the app can. */
@@ -259,6 +265,8 @@ export default function App({
   account?: React.ReactNode;
   /** Where the app's icon goes, where the app has a page for it: the Scholarkit home in the browser. */
   homeHref?: string;
+  /** Opens the account's plans, where the app has an account. */
+  onPlans?: () => void;
 }) {
   const [project, setProject] = useState<Project | null>(null);
   // The binder as of the last change, also before the screen shows it.
@@ -275,8 +283,8 @@ export default function App({
   const [filesVersion, setFilesVersion] = useState(0);
   const [problem, setProblem] = useState<string | null>(null);
   const [navOpen, setNavOpen] = useState(false);
-  const [adding, setAdding] = useState(false);
-  const [zotero, setZotero] = useState(false);
+  // The tab Add to binder is open on; null while it is closed.
+  const [adding, setAdding] = useState<AddTab | null>(null);
   const [exporting, setExporting] = useState(false);
   const [settings, setSettings] = useState(false);
   const [searching, setSearching] = useState<string | null>(null);
@@ -699,26 +707,55 @@ export default function App({
       if (path && ref.doi) void findFreePdf(path, ref.doi, { quiet: true });
     } else {
       const url = urlOf(text);
-      if (url && !/\s/.test(text.trim())) {
-        path = await addLink(url);
-      } else {
-        const title = thoughtTitle(text);
-        const lines = text.trim().split(/\r?\n/);
-        const rest = title.endsWith("…")
-          ? text.trim()
-          : lines.slice(1).join("\n").trim();
-        path = await addItem({
-          title,
-          kind: "thought",
-          markdown: rest ? `${rest}\n` : "",
-        });
-      }
+      path =
+        url && !/\s/.test(text.trim()) ? await addLink(url) : await addThought(text);
     }
-    if (path) {
-      if (view.kind !== "inbox") showView({ kind: "inbox" });
-      setSelected(path);
-      setOpened((n) => n + 1);
+    showAdded(path);
+  };
+
+  /** Shows an item just added, in the inbox. */
+  const showAdded = (path: string | null) => {
+    if (!path) return;
+    if (view.kind !== "inbox") showView({ kind: "inbox" });
+    setSelected(path);
+    setOpened((n) => n + 1);
+  };
+
+  /** A thought, as the inbox keeps it: its first line is its title. */
+  const thoughtParts = (text: string) => {
+    const title = thoughtTitle(text);
+    const lines = text.trim().split(/\r?\n/);
+    const rest = title.endsWith("…") ? text.trim() : lines.slice(1).join("\n").trim();
+    return { title, markdown: rest ? `${rest}\n` : "" };
+  };
+
+  const addThought = (text: string) =>
+    addItem({ ...thoughtParts(text), kind: "thought" });
+
+  /** Adds a paper a search found, with its free PDF where there is one. */
+  const addPaper = async (paper: FoundPaper) => {
+    for (const [kind, id] of [
+      ["doi", paper.doi],
+      ["arxiv", paper.arxiv],
+      ["pubmed", paper.pmid],
+    ] as const) {
+      const there = id ? sameWork(items, kind, id) : undefined;
+      if (there)
+        throw new Error(
+          t("This work is in the binder already: “{title}”.", { title: there.title }),
+        );
     }
+    const work = await paperDetails(paper);
+    if (work.pmid && work.pmid !== paper.pmid) {
+      const there = sameWork(items, "pubmed", work.pmid);
+      if (there)
+        throw new Error(
+          t("This work is in the binder already: “{title}”.", { title: there.title }),
+        );
+    }
+    const path = await addItem(itemOfReference(foundWork(work, [])));
+    if (path && paper.doi) void findFreePdf(path, paper.doi, { quiet: true });
+    showAdded(path);
   };
 
   /**
@@ -1204,13 +1241,15 @@ export default function App({
     );
 
   /** Adds a note and puts the caret in its title. */
-  const addNote = async (title = "") => {
-    const path = await addItem({ title: title || t("Untitled"), kind: "note" }).catch(
-      (error: unknown) => {
-        setProblem(messageOf(error));
-        return null;
-      },
-    );
+  const addNote = async (title = "", markdown = "") => {
+    const path = await addItem({
+      title: title || t("Untitled"),
+      kind: "note",
+      ...(markdown ? { markdown } : {}),
+    }).catch((error: unknown) => {
+      setProblem(messageOf(error));
+      return null;
+    });
     if (!path) return;
     if (!title) {
       // The title is typed on the page: the file is named after it then.
@@ -1348,7 +1387,7 @@ export default function App({
       const key = event.key.toLowerCase();
       if (key === "n" && !event.shiftKey) {
         event.preventDefault();
-        setAdding(true);
+        setAdding(lastAddTab());
       } else if (key === "k" || (key === "f" && event.shiftKey)) {
         event.preventDefault();
         event.stopPropagation();
@@ -1814,7 +1853,7 @@ export default function App({
         tags={tags}
         onAdd={() => {
           setNavOpen(false);
-          setAdding(true);
+          setAdding(lastAddTab());
         }}
         onSearch={() => {
           setNavOpen(false);
@@ -1909,7 +1948,7 @@ export default function App({
                 <button
                   type="button"
                   className={HEADER_BUTTON}
-                  onClick={() => setZotero(true)}
+                  onClick={() => setAdding("zotero")}
                 >
                   <Library className="size-3.5" aria-hidden />
                   {t("Add from Zotero…")}
@@ -2015,18 +2054,27 @@ export default function App({
       {dropping && <div className="drop-cover">{t("Drop to add to your inbox")}</div>}
       {adding && (
         <AddDialog
+          tab={adding}
           onAddText={addText}
           freePdfs={Boolean(store.openAccessPdfs && store.download)}
           onAddFiles={(added) => void addFileItems(added)}
-          onAddNote={() => {
-            setAdding(false);
-            void addNote();
+          onAddThought={async (text) => showAdded(await addThought(text))}
+          onOpenNote={(text) => {
+            const parts = text.trim()
+              ? thoughtParts(text)
+              : { title: "", markdown: "" };
+            void addNote(parts.title, parts.markdown);
           }}
-          onZotero={() => {
-            setAdding(false);
-            setZotero(true);
+          searchPapers={store.searchPapers}
+          onAddPaper={addPaper}
+          zoteroInBinder={inBinder}
+          onAddFromZotero={addFromZotero}
+          onSettings={() => {
+            setAdding(null);
+            setSettings(true);
           }}
-          onClose={() => setAdding(false)}
+          onPlans={onPlans}
+          onClose={() => setAdding(null)}
         />
       )}
       {exporting && (
@@ -2036,17 +2084,6 @@ export default function App({
           listItems={shown}
           allItems={items}
           onClose={() => setExporting(false)}
-        />
-      )}
-      {zotero && (
-        <ZoteroDialog
-          inBinder={inBinder}
-          onAdd={addFromZotero}
-          onSettings={() => {
-            setZotero(false);
-            setSettings(true);
-          }}
-          onClose={() => setZotero(false)}
         />
       )}
       {deleting && (
@@ -2064,6 +2101,7 @@ export default function App({
       {settings && (
         <SettingsDialog
           onClose={() => setSettings(false)}
+          openAlexKey={store.openAlexKey}
           assistantOn={info.assistant}
           onAssistantOn={(on) => {
             const latestProject = fresh.current;

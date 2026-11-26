@@ -2,7 +2,6 @@ import { Check, FolderClosed, Search } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import {
   BUTTON,
-  Dialog,
   messageOf,
   PRIMARY_BUTTON,
 } from "@scholarkit/editor/components/Dialog";
@@ -53,10 +52,10 @@ const creators = (item: ZoteroItem) => {
 };
 
 /**
- * Adds works from Zotero: a whole collection at once, or works found by
- * a search. Works already in the binder are left out.
+ * The Zotero tab of Add to binder: adds a whole collection at once, or
+ * works found by a search. Works already in the binder are left out.
  */
-export function ZoteroDialog({
+export function ZoteroPanel({
   inBinder,
   onAdd,
   onSettings,
@@ -314,11 +313,7 @@ export function ZoteroDialog({
       </>
     );
 
-  return (
-    <Dialog title={t("Add from Zotero")} onClose={onClose}>
-      <div className="dialog-wider">{body}</div>
-    </Dialog>
-  );
+  return body;
 }
 
 function Works({

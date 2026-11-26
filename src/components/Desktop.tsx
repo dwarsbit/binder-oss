@@ -18,6 +18,7 @@ import { forgetFolder, loadFolder, saveFolder } from "@/lib/prefs";
 import {
   BinderServer,
   desktopTransport,
+  openAlexKeyOf,
   type Account,
   type ServerProject,
 } from "@/lib/server";
@@ -128,6 +129,8 @@ async function openSession(dir: string, signedIn: boolean): Promise<Session> {
     session.appStore = {
       ...store,
       openAccessPdfs: (doi) => server.openAccessPdfs(doi),
+      searchPapers: (q) => server.searchPapers(q),
+      openAlexKey: openAlexKeyOf(server),
     };
   }
   const link = await invoke<Link | null>("link_load", { dir }).catch(() => null);
@@ -475,6 +478,7 @@ export function Desktop() {
   return (
     <>
       <App
+        onPlans={() => openAccountPage("/account#plan")}
         key={session.id}
         store={session.appStore}
         onSwitchBinder={closeBinder}

@@ -8,6 +8,7 @@ import {
 } from "@scholarkit/editor/lib/account";
 import { toBase64 } from "@scholarkit/editor/lib/project-doc";
 import { t } from "@scholarkit/i18n";
+import type { OpenAlexKeyStore } from "./store";
 
 export {
   browserTransport,
@@ -113,3 +114,10 @@ export class BinderServer extends AccountServer {
     };
   }
 }
+
+/** The OpenAlex key kept with the account, as the store hands it to Binder. */
+export const openAlexKeyOf = (server: BinderServer): OpenAlexKeyStore => ({
+  get: () => server.openAlexKey(),
+  save: (key) => server.saveOpenAlexKey(key),
+  forget: () => server.forgetOpenAlexKey(),
+});

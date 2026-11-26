@@ -241,6 +241,7 @@ function OpenBinder({ id, account }: { id: string; account: Account }) {
 
   return (
     <App
+      onPlans={() => window.location.assign("/account#plan")}
       store={store}
       status={status}
       projectId={id}

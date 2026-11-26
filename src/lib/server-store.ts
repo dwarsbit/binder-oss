@@ -20,7 +20,7 @@ import {
   type Connect,
   type Connection,
 } from "@scholarkit/editor/lib/sync";
-import type { BinderServer } from "./server";
+import { openAlexKeyOf, type BinderServer } from "./server";
 import type { BinderStore } from "./store";
 import { t } from "@scholarkit/i18n";
 
@@ -265,6 +265,8 @@ export function serverStore(
       };
     },
     openAccessPdfs: (doi) => server.openAccessPdfs(doi),
+    searchPapers: (q) => server.searchPapers(q),
+    openAlexKey: openAlexKeyOf(server),
     download: async (url, path) => {
       const file = fetched.get(url) ?? (await server.fetchWeb(url));
       fetched.delete(url);
