@@ -8,6 +8,8 @@
 - In a note, after `@`, type several words, such as an author, a word from the title and a year: `@stickgold sleep 2005`. The menu searches all of them and closes at a comma or a full stop, at a new line, or when nothing matches, so you can keep writing.
 - **Find a paper** says right away when paper search needs Plus, Pro or your own OpenAlex key, instead of after your first search.
 - When Binder finds no Zotero library, the **Zotero** tab says so in a roomier box, with a link to **Settings**.
+- In **Find a paper**, the search button is now a magnifying glass inside the search field.
+- Scroll bars are slim and rounded, in Binder's grays, and in dark mode too.
 
 ## 0.5.0 (2026-11-26)
 

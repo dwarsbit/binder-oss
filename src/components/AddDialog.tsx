@@ -1,4 +1,12 @@
-import { Library, Link2, PenLine, Search, Sparkles, TriangleAlert } from "lucide-react";
+import {
+  Library,
+  Link2,
+  Loader2,
+  PenLine,
+  Search,
+  Sparkles,
+  TriangleAlert,
+} from "lucide-react";
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import {
   BUTTON,
@@ -490,7 +498,7 @@ function FindTab({
         else void search(words);
       }}
     >
-      <div className="flex gap-2">
+      <div className="relative">
         <input
           autoFocus
           value={query}
@@ -506,15 +514,22 @@ function FindTab({
               move(event.key === "ArrowDown" ? 1 : -1);
             }
           }}
-          className="h-9 min-w-0 flex-1 rounded-md border bg-background px-2.5 text-[13px] outline-none focus:border-ring"
+          className="h-9 w-full rounded-md border bg-background pr-10 pl-2.5 text-[13px] outline-none focus:border-ring"
         />
+        {/* Searching runs by itself as you type; the glass searches now. */}
         <button
           type="button"
-          className={PRIMARY_BUTTON}
-          disabled={query.trim().length < 3 || busy !== null}
+          aria-label={busy === "search" ? t("Searching…") : t("Search")}
+          title={t("Search")}
+          className="absolute top-1/2 right-1 flex size-7 -translate-y-1/2 items-center justify-center rounded-[5px] text-muted-foreground hover:bg-muted hover:text-foreground disabled:pointer-events-none disabled:opacity-40"
+          disabled={query.trim().length < 3 || busy === "add"}
           onClick={() => void search(words)}
         >
-          {busy === "search" ? t("Searching…") : t("Search")}
+          {busy === "search" ? (
+            <Loader2 className="size-4 animate-spin" aria-hidden />
+          ) : (
+            <Search className="size-4" aria-hidden />
+          )}
         </button>
       </div>
       {stopped ? (
