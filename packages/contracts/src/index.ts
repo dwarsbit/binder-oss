@@ -807,6 +807,11 @@ export type ProjectInviteInfo = z.infer<typeof projectInviteInfo>;
 export const projectMembersResponse = z.object({
   members: z.array(projectMemberInfo),
   invites: z.array(projectInviteInfo),
+  /**
+   * For the owner: whether their plan lets them invite people (Pro). Members already in
+   * the project stay either way. Missing from older servers, where everyone can invite.
+   */
+  canInvite: z.boolean().optional(),
 });
 export type ProjectMembersResponse = z.infer<typeof projectMembersResponse>;
 
@@ -814,7 +819,8 @@ export type ProjectMembersResponse = z.infer<typeof projectMembersResponse>;
  * POST /api/projects/:id/invites (owner): body. Emails the invite and answers with a
  * ProjectInviteInfo (201). The role is one of inviteRolesFor the project's app. Inviting an
  * address again sends a new email with a new link and role.
- * 409 "already_member" for someone in the project, 429 "too_many_invites" past the hourly limit.
+ * 409 "already_member" for someone in the project, 429 "too_many_invites" past the hourly limit,
+ * 403 "sharing_unavailable" when the owner's plan doesn't include sharing (Free and Plus).
  */
 export const createInviteRequest = z.object({
   email: z.string().trim().toLowerCase().pipe(z.email().max(254)),
