@@ -83,6 +83,7 @@ export function AddDialog({
   onAddThought,
   onOpenNote,
   searchPapers,
+  paperSearchAccess,
   onAddPaper,
   zoteroInBinder,
   onAddFromZotero,
@@ -101,6 +102,8 @@ export function AddDialog({
   onOpenNote: (text: string) => void;
   /** Searches OpenAlex through the account; absent without one. */
   searchPapers?: (q: string) => Promise<PaperSearch>;
+  /** Asks, before any search, whether papers may be searched for. Rejects with the notice. */
+  paperSearchAccess?: () => Promise<unknown>;
   /** Adds a paper a search found. Rejects with why not. */
   onAddPaper: (paper: FoundPaper) => Promise<void>;
   zoteroInBinder: (library: string, key: string) => boolean;
@@ -163,6 +166,7 @@ export function AddDialog({
           {tab === "find" && (
             <FindTab
               searchPapers={searchPapers}
+              paperSearchAccess={paperSearchAccess}
               onAddPaper={onAddPaper}
               onSettings={onSettings}
               onPlans={onPlans}
@@ -367,12 +371,14 @@ const SEARCH_PAUSE_MS = 400;
 
 function FindTab({
   searchPapers,
+  paperSearchAccess,
   onAddPaper,
   onSettings,
   onPlans,
   onClose,
 }: {
   searchPapers?: (q: string) => Promise<PaperSearch>;
+  paperSearchAccess?: () => Promise<unknown>;
   onAddPaper: (paper: FoundPaper) => Promise<void>;
   onSettings: () => void;
   onPlans?: () => void;
@@ -411,6 +417,24 @@ function FindTab({
       if (id === latest.current) setBusy(null);
     }
   };
+
+  // Without Plus, Pro or an own key, the upgrade notice shows as the tab opens, not after a
+  // first search. Other answers (signed out, offline) wait for a search to say so.
+  useEffect(() => {
+    if (!paperSearchAccess) return;
+    let live = true;
+    paperSearchAccess().catch((error: unknown) => {
+      if (
+        live &&
+        error instanceof ServerError &&
+        ["plus_needed", "search_off"].includes(error.code)
+      )
+        setStopped((now) => now ?? error);
+    });
+    return () => {
+      live = false;
+    };
+  }, [paperSearchAccess]);
 
   // Searches by itself once typing pauses for SEARCH_PAUSE_MS. After a notice (no plan, a
   // refused key, too many searches) it waits for Search or Enter, so it doesn't ask again

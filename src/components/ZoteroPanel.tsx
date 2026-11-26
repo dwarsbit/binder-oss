@@ -1,4 +1,4 @@
-import { Check, FolderClosed, Search } from "lucide-react";
+import { Check, FolderClosed, Library, Search } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import {
   BUTTON,
@@ -168,17 +168,29 @@ export function ZoteroPanel({
       </p>
     ) : libraries.length === 0 ? (
       <>
-        <p className="mt-2 text-[13px] text-muted-foreground">
-          {t(
-            "Binder finds no Zotero library yet. Turn on the Zotero app, or a library at zotero.org, in Settings.",
-          )}
-        </p>
-        <div className="mt-4 flex justify-end gap-2">
+        <div
+          role="status"
+          className="mt-4 flex gap-2 rounded-md border border-tint-edge bg-muted px-3.5 py-3 text-xs text-tint-foreground"
+        >
+          <Library className="mt-px size-3.5 flex-none" aria-hidden />
+          <div>
+            <p>
+              {t(
+                "Binder finds no Zotero library yet. Turn on the Zotero app, or a library at zotero.org, in Settings.",
+              )}
+            </p>
+            <button
+              type="button"
+              className="mt-1.5 font-medium underline-offset-2 hover:underline"
+              onClick={onSettings}
+            >
+              {t("Open settings")}
+            </button>
+          </div>
+        </div>
+        <div className="mt-5 flex justify-end gap-2">
           <button type="button" className={BUTTON} onClick={onClose}>
             {t("Cancel")}
-          </button>
-          <button type="button" className={PRIMARY_BUTTON} onClick={onSettings}>
-            {t("Open settings")}
           </button>
         </div>
       </>

@@ -1648,7 +1648,7 @@ export type OpenAccessResponse = z.infer<typeof openAccessResponse>;
 /**
  * GET /api/lookup/search?q=…: papers whose title or authors match the words, from OpenAlex. It
  * runs on Scholarkit's key for Pro, or on the caller's own key: sent as an `OpenAlex-Key` header
- * (also without an account) or kept with the account. Without either: 403 pro_needed.
+ * (also without an account) or kept with the account. Without either: 403 plus_needed.
  */
 export const paperSearchQuery = z.object({ q: z.string().trim().min(3).max(200) });
 export type PaperSearchQuery = z.infer<typeof paperSearchQuery>;
@@ -1672,6 +1672,16 @@ export const paperSearchResponse = z.object({
   betterWithPro: z.boolean().optional(),
 });
 export type PaperSearchResponse = z.infer<typeof paperSearchResponse>;
+
+/**
+ * GET /api/lookup/search/access: how this caller may search, before any search. Titles and
+ * authors (Plus) or every detail (Pro, an own key). Otherwise the same notices as a search:
+ * 401 unauthorized, 403 plus_needed, 503 search_off.
+ */
+export const paperSearchAccessResponse = z.object({
+  access: z.enum(["titles", "details"]),
+});
+export type PaperSearchAccessResponse = z.infer<typeof paperSearchAccessResponse>;
 
 /** GET /api/account/openalex-key: whether the account keeps an own key, and how it ends. */
 export const openAlexKeyResponse = z.object({

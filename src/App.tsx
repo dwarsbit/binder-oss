@@ -2186,6 +2186,7 @@ export default function App({
             void addNote(parts.title, parts.markdown);
           }}
           searchPapers={store.searchPapers}
+          paperSearchAccess={store.paperSearchAccess}
           onAddPaper={addPaper}
           zoteroInBinder={inBinder}
           onAddFromZotero={addFromZotero}

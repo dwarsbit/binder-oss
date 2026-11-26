@@ -130,6 +130,7 @@ async function openSession(dir: string, signedIn: boolean): Promise<Session> {
       ...store,
       openAccessPdfs: (doi) => server.openAccessPdfs(doi),
       searchPapers: (q) => server.searchPapers(q),
+      paperSearchAccess: () => server.paperSearchAccess(),
       openAlexKey: openAlexKeyOf(server),
     };
   }

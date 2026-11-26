@@ -50,6 +50,8 @@ export interface BinderStore {
    * at OpenAlex. Only with a Scholarkit account.
    */
   searchPapers?(q: string): Promise<PaperSearch>;
+  /** How papers may be searched for, before any search; rejects with the notice a search would give. */
+  paperSearchAccess?(): Promise<unknown>;
   /** The OpenAlex key kept with the account, for paper search on any plan. */
   openAlexKey?: OpenAlexKeyStore;
 }

@@ -5,6 +5,9 @@
 - **Lists** in the sidebar show the items that pass the filters you choose: status, kind, tag, year, when they were added, whether they have a file, author and where they were published. Click **+** next to **Lists** to start one, click a filter to change it and **Filter** to add one. A binder starts with four lists: **Added this week**, **Ready to read**, **Missing a PDF** and **Books and chapters**; rename, duplicate or delete them from the **⋯** menu. Lists are kept in the binder, so they are the same on every computer and in the browser. See [the binder format](docs/format.md).
 - **Notes** shows every note and thought, also a thought still in your inbox. A thought leaves the inbox with **Take out of inbox**, and stays in **Notes**.
 - Dropdowns open Binder's own list instead of your system's, in the same style as the rest of Binder. **Status** shows each status's color, **Kind** each kind's icon and a highlight's category its color, in the list and once chosen.
+- In a note, after `@`, type several words, such as an author, a word from the title and a year: `@stickgold sleep 2005`. The menu searches all of them and closes at a comma or a full stop, at a new line, or when nothing matches, so you can keep writing.
+- **Find a paper** says right away when paper search needs Plus, Pro or your own OpenAlex key, instead of after your first search.
+- When Binder finds no Zotero library, the **Zotero** tab says so in a roomier box, with a link to **Settings**.
 
 ## 0.5.0 (2026-11-26)
 

@@ -266,6 +266,7 @@ export function serverStore(
     },
     openAccessPdfs: (doi) => server.openAccessPdfs(doi),
     searchPapers: (q) => server.searchPapers(q),
+    paperSearchAccess: () => server.paperSearchAccess(),
     openAlexKey: openAlexKeyOf(server),
     download: async (url, path) => {
       const file = fetched.get(url) ?? (await server.fetchWeb(url));
