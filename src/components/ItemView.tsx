@@ -166,6 +166,8 @@ const LABELS = {
   publisher: t("Publisher"),
   doi: "DOI",
   isbn: "ISBN",
+  arxiv: "arXiv",
+  pmid: "PubMed",
   url: t("Address"),
 } as const;
 
@@ -179,6 +181,8 @@ const KEY_OF = {
   publisher: "publisher",
   doi: "doi",
   isbn: "isbn",
+  arxiv: "arxiv",
+  pmid: "pmid",
   url: "url",
 } as const;
 
@@ -320,9 +324,25 @@ export function ItemView({ focusRef, focusEndRef, titleRef, ...props }: ItemView
       FIELDS[item.kind].includes(field)
     );
   });
-  const doiUrl = item.doi
-    ? `https://doi.org/${item.doi.replace(/^https?:\/\/(dx\.)?doi\.org\//i, "")}`
-    : "";
+  /** Where a detail's Open button goes: the DOI, the arXiv or PubMed page, the address. */
+  const linkOf = (field: keyof typeof LABELS): string => {
+    switch (field) {
+      case "doi":
+        return item.doi
+          ? `https://doi.org/${item.doi.replace(/^https?:\/\/(dx\.)?doi\.org\//i, "")}`
+          : "";
+      case "arxiv":
+        return item.arxiv ? `https://arxiv.org/abs/${encodeURI(item.arxiv)}` : "";
+      case "pmid":
+        return /^\d+$/.test(item.pmid)
+          ? `https://pubmed.ncbi.nlm.nih.gov/${item.pmid}/`
+          : "";
+      case "url":
+        return /^https?:\/\//i.test(item.url) ? item.url : "";
+      default:
+        return "";
+    }
+  };
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
@@ -474,20 +494,11 @@ export function ItemView({ focusRef, focusEndRef, titleRef, ...props }: ItemView
                   })
                 }
                 action={
-                  field === "doi" && doiUrl ? (
+                  linkOf(field) ? (
                     <button
                       type="button"
                       className={LINK_BUTTON}
-                      onClick={() => props.onOpenLink(doiUrl)}
-                    >
-                      <ExternalLink className="size-3" aria-hidden />
-                      {t("Open")}
-                    </button>
-                  ) : field === "url" && /^https?:\/\//i.test(item.url) ? (
-                    <button
-                      type="button"
-                      className={LINK_BUTTON}
-                      onClick={() => props.onOpenLink(item.url)}
+                      onClick={() => props.onOpenLink(linkOf(field))}
                     >
                       <ExternalLink className="size-3" aria-hidden />
                       {t("Open")}

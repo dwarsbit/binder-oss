@@ -102,6 +102,8 @@ it doesn't know, such as your own properties, are kept as written.
 | `publisher`      | The publisher of a book or report.                                                                                                               |
 | `doi`            | The DOI, without `https://doi.org/`.                                                                                                             |
 | `isbn`           | The ISBN of a book.                                                                                                                              |
+| `arxiv`          | The arXiv ID of a preprint, as `1706.03762`, without its version.                                                                                |
+| `pmid`           | The PubMed ID of an article.                                                                                                                     |
 | `url`            | The address of a web page, or where the work is online.                                                                                          |
 | `file`           | The original file, as a path from the item's own folder. Binder names it after the item and keeps it next to it.                                 |
 | `zotero`         | The item in Zotero, as a `zotero://select/…` link that opens it there. `library` is the Zotero app's own library, `groups/<id>` a group library. |

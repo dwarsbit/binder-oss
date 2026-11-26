@@ -25,6 +25,7 @@ import { webAddresses } from "@/lib/web-address";
 import { t } from "@scholarkit/i18n";
 import { rich } from "@scholarkit/i18n/react";
 import { saveBeforeSwitch } from "@/lib/languages";
+import { setWorkLookup } from "@scholarkit/editor/references/lookup";
 
 const server = new BinderServer(browserTransport);
 
@@ -261,6 +262,11 @@ function OpenBinder({ id, account }: { id: string; account: Account }) {
  * out, it goes to the server's sign-in page and comes back.
  */
 export function Web() {
+  // DOIs, ISBNs, arXiv and PubMed IDs are looked up on the server, never at the source.
+  useEffect(() => {
+    setWorkLookup((kind, id) => server.lookUpWork(kind, id));
+    return () => setWorkLookup(null);
+  }, []);
   const path = useSyncExternalStore(subscribeToAddress, () => window.location.pathname);
 
   // One address for the list, and old links (/binder/<id>) land on the binder's new address.

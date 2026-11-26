@@ -17,10 +17,12 @@ function readInput(text: string) {
   if (lookup)
     return {
       kind: lookup.kind,
-      hint:
-        lookup.kind === "doi"
-          ? t("A DOI. Binder looks up the work at Crossref.")
-          : t("An ISBN. Binder looks up the book at Open Library."),
+      hint: {
+        doi: t("A DOI. Binder looks up the work at Crossref."),
+        isbn: t("An ISBN. Binder looks up the book at Open Library."),
+        arxiv: t("An arXiv ID. Binder looks up the preprint."),
+        pubmed: t("A PubMed ID. Binder looks up the article at PubMed."),
+      }[lookup.kind],
     } as const;
   if (urlOf(text) && !/\s/.test(text.trim())) {
     return {
@@ -34,8 +36,8 @@ function readInput(text: string) {
 }
 
 /**
- * Adds to the binder: a file, a link, a DOI or an ISBN, a thought, a
- * note, or works from Zotero.
+ * Adds to the binder: a file, a link, a DOI, an ISBN, an arXiv or
+ * PubMed ID, a thought, a note, or works from Zotero.
  */
 export function AddDialog({
   onAddText,
@@ -44,7 +46,7 @@ export function AddDialog({
   onZotero,
   onClose,
 }: {
-  /** Adds a link, a DOI, an ISBN or a thought. Rejects with why not. */
+  /** Adds a link, a DOI, an ISBN, an arXiv or PubMed ID, or a thought. Rejects with why not. */
   onAddText: (text: string) => Promise<void>;
   onAddFiles: (files: File[]) => void;
   onAddNote: () => void;
@@ -84,8 +86,10 @@ export function AddDialog({
           autoFocus
           rows={3}
           value={text}
-          aria-label={t("A link, DOI, ISBN or thought")}
-          placeholder={t("Paste a link, a DOI or an ISBN, or write down a thought")}
+          aria-label={t("A link, DOI, ISBN, arXiv or PubMed ID, or thought")}
+          placeholder={t(
+            "Paste a link, a DOI, an ISBN, an arXiv or PubMed ID, or write down a thought",
+          )}
           onChange={(event) => {
             setText(event.target.value);
             setProblem(null);

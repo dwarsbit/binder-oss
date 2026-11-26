@@ -1,5 +1,5 @@
 import type { Reference, ReferenceType } from "@scholarkit/editor/references/reference";
-import type { Lookup } from "@scholarkit/editor/references/lookup";
+import type { FoundWork, Lookup } from "@scholarkit/editor/references/lookup";
 import { writePage } from "@scholarkit/editor/lib/page-file";
 import type { Project } from "@scholarkit/editor/lib/paths";
 import {
@@ -82,8 +82,9 @@ const KINDS_OF: Record<ReferenceType, Kind> = {
   other: "article",
 };
 
-/** A new item from a work found in Zotero or by its DOI or ISBN. */
-export function itemOfReference(ref: Reference, lookup?: Lookup): NewItem {
+/** A new item from a work found in Zotero or by its DOI, ISBN, arXiv or PubMed ID. */
+export function itemOfReference(ref: Reference | FoundWork): NewItem {
+  const ids = "arxiv" in ref ? ref : null;
   return {
     title: ref.title.trim() || t("Untitled"),
     kind: KINDS_OF[ref.type],
@@ -95,9 +96,34 @@ export function itemOfReference(ref: Reference, lookup?: Lookup): NewItem {
     pages: ref.pages,
     publisher: ref.publisher,
     doi: ref.doi,
-    isbn: lookup?.kind === "isbn" ? lookup.id : undefined,
+    isbn: ids?.isbn || undefined,
+    arxiv: ids?.arxiv || undefined,
+    pmid: ids?.pmid || undefined,
     url: ref.url,
   };
+}
+
+/** The item a binder has already for a work looked up by this ID, if any. */
+export function sameWork(
+  items: Item[],
+  kind: Lookup["kind"],
+  id: string,
+): Item | undefined {
+  const lower = id.toLowerCase();
+  return items.find((item) => {
+    switch (kind) {
+      case "doi":
+        return (
+          item.doi.replace(/^https?:\/\/(dx\.)?doi\.org\//i, "").toLowerCase() === lower
+        );
+      case "isbn":
+        return item.isbn.replace(/[\s-]/g, "").toUpperCase() === id;
+      case "arxiv":
+        return item.arxiv.replace(/v\d+$/, "").toLowerCase() === lower;
+      case "pubmed":
+        return item.pmid === id;
+    }
+  });
 }
 
 /** A web page's title from its address alone: "example.org/library/where-students-read". */
@@ -142,6 +168,8 @@ export function searchablePages(project: Project): Record<string, string> {
       item.publisher,
       item.doi,
       item.isbn,
+      item.arxiv,
+      item.pmid,
       item.url,
       kindLabel(item.kind),
       item.status ? statusLabel(item.status) : "",

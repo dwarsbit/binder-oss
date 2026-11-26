@@ -51,10 +51,10 @@ your sources and sums them up. Asking your sources questions comes in 0.4.
 - **Binders**: make a binder for each project, in the Binder folder in
   your home folder, or open any folder as one. Write down your research
   question when you make it, and change it in the sidebar.
-- **Add anything**: press Cmd/Ctrl + N and paste a link, a DOI or an ISBN,
-  or write down a thought. A DOI is looked up at Crossref and an ISBN at
-  Open Library, so the title, authors, year and journal fill themselves
-  in. Add a file, or drop files on the window: each is copied next to its
+- **Add anything**: press Cmd/Ctrl + N and paste a link, a DOI, an ISBN,
+  an arXiv or PubMed ID, or write down a thought. Your Scholarkit account
+  looks the work up at Crossref, Open Library, arXiv or PubMed, so the
+  title, authors, year and journal fill themselves in. Add a file, or drop files on the window: each is copied next to its
   item.
 - **Browser clipper**: the Binder Clipper extension saves a page and the
   passages you highlighted on it into a binder in your account. See

@@ -54,10 +54,19 @@ field you can:
 - **paste a DOI**, such as `10.1000/jher.2021.0042`: Binder looks up the
   work at Crossref and fills in its title, authors, year and journal
 - **paste an ISBN**: Binder looks up the book at Open Library
+- **paste an arXiv ID**, such as `arXiv:1706.03762`, or a link to
+  arxiv.org: Binder adds the preprint, with its arXiv ID and DOI
+- **paste a PubMed ID**, such as `PMID: 31452104` or `PMC6744368`, or a
+  link to PubMed: Binder adds the article, with its PubMed ID and DOI. A
+  number on its own stays a thought.
 - **paste a link**: Binder adds the web page and keeps its text, so you
   can read it in Binder. A link to a PDF adds the PDF.
 - **write a thought**: a question for your supervisor, an idea for a
   chapter. Its first line is its title.
+
+Looking up a DOI, an ISBN, an arXiv or PubMed ID needs you to be signed
+in to your Scholarkit account: our server asks Crossref, Open Library,
+arXiv or PubMed for you.
 
 Under the field, **File…** adds files from your computer, **Note** adds a
 note of your own and **Zotero…** adds works from Zotero. You can also drop

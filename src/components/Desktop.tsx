@@ -25,6 +25,7 @@ import { desktopStore, type BinderStore } from "@/lib/store";
 import { updater } from "@/lib/updates";
 import { t, tn } from "@scholarkit/i18n";
 import { saveBeforeSwitch } from "@/lib/languages";
+import { setWorkLookup } from "@scholarkit/editor/references/lookup";
 
 const server = new BinderServer(desktopTransport);
 
@@ -183,6 +184,11 @@ async function openSession(dir: string, signedIn: boolean): Promise<Session> {
  * account can be opened here.
  */
 export function Desktop() {
+  // DOIs, ISBNs, arXiv and PubMed IDs are looked up on the server, never at the source.
+  useEffect(() => {
+    setWorkLookup((kind, id) => server.lookUpWork(kind, id));
+    return () => setWorkLookup(null);
+  }, []);
   const [folder, setFolder] = useState(loadFolder);
   const [signedIn, setSignedIn] = useState<boolean | null>(null);
   const [account, setAccount] = useState<Account | null>(null);

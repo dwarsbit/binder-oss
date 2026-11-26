@@ -84,6 +84,33 @@ describe("exporting", () => {
     expect(JSON.parse(exportText("csl-json", [article]))[0].id).toBe("okafor2021");
   });
 
+  it("carries arXiv and PubMed IDs, which the item keeps", () => {
+    const source = newItemSource(
+      {
+        title: "Attention is all you need",
+        kind: "article",
+        authors: ["Vaswani, Ashish"],
+        year: "2017",
+        publishedIn: "arXiv",
+        doi: "10.48550/arXiv.1706.03762",
+        arxiv: "1706.03762",
+        pmid: "31452104",
+        url: "https://arxiv.org/abs/1706.03762",
+      },
+      "2026-11-26",
+    );
+    expect(source).toMatch(
+      /doi: 10\.48550\/arXiv\.1706\.03762\narxiv: "?1706\.03762"?\npmid: "?31452104"?\nurl: /,
+    );
+    const preprint = readItem("items/Attention.md", source);
+    expect(preprint).toMatchObject({ arxiv: "1706.03762", pmid: "31452104" });
+    const bibtex = exportText("bibtex", [preprint]);
+    expect(bibtex).toContain("eprint = {1706.03762}");
+    expect(bibtex).toContain("archiveprefix = {arXiv}");
+    expect(bibtex).toContain("pmid = {31452104}");
+    expect(JSON.parse(exportText("csl-json", [preprint]))[0].PMID).toBe("31452104");
+  });
+
   it("names the file", () => {
     expect(exportFileName("Thesis", "bibtex")).toBe("Thesis.bib");
     expect(exportFileName("Thesis (Reading list)", "ris")).toBe(

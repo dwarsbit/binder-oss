@@ -80,6 +80,7 @@ import {
 import {
   inView,
   itemOfReference,
+  sameWork,
   searchablePages,
   titleOfUrl,
   urlOf,
@@ -653,36 +654,44 @@ export default function App({
     }
   };
 
-  /** Adds what was typed in Add to binder: a DOI, an ISBN, a link or a thought. */
+  /** Adds what was typed in Add to binder: a DOI, an ISBN, an arXiv or PubMed ID, a link or a thought. */
   const addText = async (text: string) => {
     const lookup = lookupOf(text);
     let path: string | null;
     if (lookup) {
-      const duplicate = items.find((entry) =>
-        lookup.kind === "doi"
-          ? entry.doi.toLowerCase() === lookup.id.toLowerCase()
-          : entry.isbn.replace(/-/g, "") === lookup.id,
-      );
-      if (duplicate) {
-        throw new Error(
-          t("This work is in the binder already: “{title}”.", {
-            title: duplicate.title,
-          }),
-        );
-      }
+      const inBinder = (found: Item | undefined) => {
+        if (found)
+          throw new Error(
+            t("This work is in the binder already: “{title}”.", {
+              title: found.title,
+            }),
+          );
+      };
+      inBinder(sameWork(items, lookup.kind, lookup.id));
       const ref = await lookUp(lookup, []);
       if (!ref) {
         throw new Error(
-          lookup.kind === "doi"
-            ? t(
-                "Crossref knows no work with this DOI. Check it, or add the work as a link.",
-              )
-            : t(
-                "Open Library knows no book with this ISBN. Check it, or add the book as a note.",
-              ),
+          {
+            doi: t(
+              "Crossref knows no work with this DOI. Check it, or add the work as a link.",
+            ),
+            isbn: t(
+              "Open Library knows no book with this ISBN. Check it, or add the book as a note.",
+            ),
+            arxiv: t(
+              "arXiv knows no preprint with this ID. Check it, or add the preprint as a link.",
+            ),
+            pubmed: t(
+              "PubMed knows no article with this ID. Check it, or add the article as a link.",
+            ),
+          }[lookup.kind],
         );
       }
-      path = await addItem(itemOfReference(ref, lookup));
+      // The same work by another of its IDs: a PMC ID's PubMed ID, an arXiv DOI's arXiv ID.
+      if (ref.doi) inBinder(sameWork(items, "doi", ref.doi));
+      if (ref.arxiv) inBinder(sameWork(items, "arxiv", ref.arxiv));
+      if (ref.pmid) inBinder(sameWork(items, "pubmed", ref.pmid));
+      path = await addItem(itemOfReference(ref));
     } else {
       const url = urlOf(text);
       if (url && !/\s/.test(text.trim())) {

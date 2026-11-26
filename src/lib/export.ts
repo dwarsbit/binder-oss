@@ -51,6 +51,8 @@ export function exportReferences(items: Item[]): ExportReference[] {
       doi: item.doi.replace(/^https?:\/\/(dx\.)?doi\.org\//i, ""),
       url: item.url,
       isbn: item.isbn,
+      arxiv: item.arxiv,
+      pmid: item.pmid,
       keywords: item.tags,
     };
     ref.key = suggestKey(ref, taken);

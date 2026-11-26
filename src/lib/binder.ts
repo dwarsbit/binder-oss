@@ -83,6 +83,10 @@ export interface Item {
   publisher: string;
   doi: string;
   isbn: string;
+  /** The arXiv ID, as `1706.03762`. */
+  arxiv: string;
+  /** The PubMed ID. */
+  pmid: string;
   url: string;
   /** The original file, as a path in the binder. */
   file: string | null;
@@ -110,6 +114,8 @@ const KEYS = [
   "publisher",
   "doi",
   "isbn",
+  "arxiv",
+  "pmid",
   "url",
   "file",
   "zotero",
@@ -167,6 +173,8 @@ export function readItem(path: string, source: string): Item {
     publisher: text(properties, "publisher"),
     doi: text(properties, "doi"),
     isbn: text(properties, "isbn"),
+    arxiv: text(properties, "arxiv"),
+    pmid: text(properties, "pmid"),
     url: text(properties, "url"),
     file: fileText ? join(parentOf(path), fileText) : null,
     zotero: text(properties, "zotero"),
@@ -247,6 +255,8 @@ export interface NewItem {
   publisher?: string;
   doi?: string;
   isbn?: string;
+  arxiv?: string;
+  pmid?: string;
   url?: string;
   /** The original file's name, next to the item. */
   file?: string;
@@ -283,6 +293,8 @@ export function newItemSource(item: NewItem, added = today()): string {
     publisher: item.publisher ?? null,
     doi: item.doi ?? null,
     isbn: item.isbn ?? null,
+    arxiv: item.arxiv ?? null,
+    pmid: item.pmid ?? null,
     url: item.url ?? null,
     file: item.file ?? null,
     zotero: item.zotero ?? null,

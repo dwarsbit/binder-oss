@@ -1565,3 +1565,65 @@ export const clipPayload = z.object({
 export type ClipPayload = z.infer<typeof clipPayload>;
 
 export * from "./paths.js";
+
+// ---------- Lookups ----------
+
+/**
+ * What GET /api/lookup/work looks a work up by: a DOI (Crossref, then DataCite), an ISBN
+ * (Open Library), an arXiv ID (DataCite, by the DOI arXiv gives every preprint) or a PubMed ID
+ * (PubMed; `PMC…` for PubMed Central). The apps never ask those services themselves.
+ */
+export const lookupKind = z.enum(["doi", "isbn", "arxiv", "pubmed"]);
+export type LookupKind = z.infer<typeof lookupKind>;
+
+export const LOOKUP_IDS: Record<LookupKind, RegExp> = {
+  doi: /^10\.\d{4,9}\/[!-~]{1,200}$/,
+  isbn: /^(?:\d{9}[\dX]|97[89]\d{10})$/,
+  arxiv: /^(?:\d{4}\.\d{4,5}|[a-z]+(?:-[a-z]+)?(?:\.[A-Z]{2})?\/\d{7})$/,
+  pubmed: /^(?:\d{1,9}|PMC\d{1,9})$/,
+};
+
+/** GET /api/lookup/work?kind=…&id=… */
+export const lookupWorkQuery = z.object({
+  kind: lookupKind,
+  id: z.string().min(1).max(220),
+});
+export type LookupWorkQuery = z.infer<typeof lookupWorkQuery>;
+
+/** A work as a lookup found it, the fields the apps' references have; empty when unknown. */
+export const lookedUpWork = z.object({
+  type: z.enum([
+    "article",
+    "book",
+    "chapter",
+    "conference",
+    "thesis",
+    "report",
+    "webpage",
+    "other",
+  ]),
+  /** Names as "Family, Given"; an organization as its name. */
+  author: z.array(z.string()),
+  editor: z.array(z.string()),
+  title: z.string(),
+  year: z.string(),
+  /** The journal, the book a chapter is in, the proceedings, or "arXiv". */
+  container: z.string(),
+  publisher: z.string(),
+  place: z.string(),
+  volume: z.string(),
+  issue: z.string(),
+  pages: z.string(),
+  doi: z.string(),
+  url: z.string(),
+  isbn: z.string(),
+  /** The arXiv ID, without its version. */
+  arxiv: z.string(),
+  /** The PubMed ID. */
+  pmid: z.string(),
+});
+export type LookedUpWork = z.infer<typeof lookedUpWork>;
+
+/** GET /api/lookup/work: 404 not_found when the source knows no such work. */
+export const lookupWorkResponse = z.object({ work: lookedUpWork });
+export type LookupWorkResponse = z.infer<typeof lookupWorkResponse>;
