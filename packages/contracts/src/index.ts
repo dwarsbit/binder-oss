@@ -1666,7 +1666,11 @@ export const foundPaper = lookedUpWork.extend({
 });
 export type FoundPaper = z.infer<typeof foundPaper>;
 
-export const paperSearchResponse = z.object({ works: z.array(foundPaper) });
+export const paperSearchResponse = z.object({
+  works: z.array(foundPaper),
+  /** Found on Plus: Pro shows each paper's details too. */
+  betterWithPro: z.boolean().optional(),
+});
 export type PaperSearchResponse = z.infer<typeof paperSearchResponse>;
 
 /** GET /api/account/openalex-key: whether the account keeps an own key, and how it ends. */

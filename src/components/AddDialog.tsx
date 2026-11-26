@@ -1,5 +1,5 @@
-import { Library, Link2, PenLine, Search, TriangleAlert } from "lucide-react";
-import { useMemo, useRef, useState, type ReactNode } from "react";
+import { Library, Link2, PenLine, Search, Sparkles, TriangleAlert } from "lucide-react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import {
   BUTTON,
   Dialog,
@@ -323,13 +323,21 @@ function Stopped({
   onSettings: () => void;
   onPlans?: () => void;
 }) {
-  const link = "font-medium text-tint-foreground hover:underline";
+  const link = "font-medium text-tint-foreground underline-offset-2 hover:underline";
+  // Not having Plus isn't a fault: that notice reads as an offer, gray with the tint.
+  const upgrade = error.code === "plus_needed";
+  const Icon = upgrade ? Sparkles : TriangleAlert;
   return (
     <div
-      role="alert"
-      className="mt-2 flex gap-2 rounded-md bg-destructive/10 p-3 text-xs text-destructive"
+      role={upgrade ? "status" : "alert"}
+      className={cn(
+        "mt-2 flex gap-2 rounded-md p-3 text-xs",
+        upgrade
+          ? "border border-tint-edge bg-muted text-tint-foreground"
+          : "bg-destructive/10 text-destructive",
+      )}
     >
-      <TriangleAlert className="mt-px size-3.5 flex-none" aria-hidden />
+      <Icon className="mt-px size-3.5 flex-none" aria-hidden />
       <div>
         <p>{error.message}</p>
         {["plus_needed", "key_refused", "key_budget_used"].includes(error.code) && (
@@ -354,6 +362,9 @@ function Stopped({
   );
 }
 
+/** How long typing pauses before Find a paper searches by itself. */
+const SEARCH_PAUSE_MS = 400;
+
 function FindTab({
   searchPapers,
   onAddPaper,
@@ -375,27 +386,44 @@ function FindTab({
   const [stopped, setStopped] = useState<ServerError | null>(null);
   const [problem, setProblem] = useState<string | null>(null);
   const list = useRef<HTMLUListElement>(null);
+  // Only the latest search's answer counts: an earlier one can arrive after it.
+  const latest = useRef(0);
 
-  const search = async () => {
-    const q = query.trim();
-    if (!searchPapers || q.length < 3 || busy) return;
+  const search = async (q: string) => {
+    if (!searchPapers || q.length < 3 || busy === "add") return;
+    const id = ++latest.current;
     setBusy("search");
     setProblem(null);
-    setStopped(null);
     try {
       const answer = await searchPapers(q);
+      if (id !== latest.current) return;
+      setStopped(null);
       setFound(answer);
       setSearched(q);
       setChosen(0);
     } catch (error) {
+      if (id !== latest.current) return;
       setFound(null);
       if (error instanceof ServerError && error.status !== 0 && error.code !== "error")
         setStopped(error);
       else setProblem(messageOf(error));
     } finally {
-      setBusy(null);
+      if (id === latest.current) setBusy(null);
     }
   };
+
+  // Searches by itself once typing pauses for SEARCH_PAUSE_MS. After a notice (no plan, a
+  // refused key, too many searches) it waits for Search or Enter, so it doesn't ask again
+  // and again for the same answer.
+  const words = query.trim();
+  const pending = words.length >= 3 && words !== searched && !stopped;
+  useEffect(() => {
+    if (!pending) return;
+    const timer = setTimeout(() => void search(words), SEARCH_PAUSE_MS);
+    return () => clearTimeout(timer);
+    // search changes every render; the words are what start a search.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pending, words]);
 
   const add = async (paper: FoundPaper | undefined) => {
     if (!paper || busy) return;
@@ -435,7 +463,7 @@ function FindTab({
         event.preventDefault();
         // Enter searches new words; on the words just searched, it adds the chosen paper.
         if (fresh && works.length) void add(works[chosen]);
-        else void search();
+        else void search(words);
       }}
     >
       <div className="flex gap-2">
@@ -460,7 +488,7 @@ function FindTab({
           type="button"
           className={PRIMARY_BUTTON}
           disabled={query.trim().length < 3 || busy !== null}
-          onClick={() => void search()}
+          onClick={() => void search(words)}
         >
           {busy === "search" ? t("Searching…") : t("Search")}
         </button>
@@ -524,6 +552,16 @@ function FindTab({
                     </li>
                   ))}
                 </ul>
+                {found.betterWithPro && onPlans && (
+                  <button
+                    type="button"
+                    onClick={onPlans}
+                    className="flex w-full items-center gap-1.5 border-t bg-muted px-3 py-2 text-left text-xs font-medium text-tint-foreground hover:underline"
+                  >
+                    <Sparkles className="size-3.5 flex-none" aria-hidden />
+                    {t("Get better results with Pro")}
+                  </button>
+                )}
               </>
             )}
           </div>
