@@ -19,13 +19,14 @@
     "lint": "eslint .",
     "typecheck": "tsc && tsc -p clipper/tsconfig.json",
     "test": "vitest run",
-    "i18n": "scholarkit-i18n extract src clipper/src node_modules/@scholarkit/editor/src node_modules/@scholarkit/updates/src node_modules/@scholarkit/account-menu/src src/locales",
+    "i18n": "scholarkit-i18n extract src clipper/src node_modules/@scholarkit/editor/src node_modules/@scholarkit/updates/src node_modules/@scholarkit/account-menu/src node_modules/@scholarkit/assistant/src src/locales",
     "lint:rust": "cargo fmt --check --manifest-path src-tauri/Cargo.toml && cargo clippy --manifest-path src-tauri/Cargo.toml --all-targets --locked -- -D warnings",
     "test:rust": "cargo test --manifest-path src-tauri/Cargo.toml --locked",
     "prepare": "pnpm --filter @scholarkit/contracts --filter @scholarkit/i18n --filter @scholarkit/monitoring build"
   },
   "dependencies": {
     "@scholarkit/account-menu": "workspace:*",
+    "@scholarkit/assistant": "workspace:*",
     "@scholarkit/contracts": "workspace:*",
     "@scholarkit/editor": "workspace:*",
     "@scholarkit/i18n": "workspace:*",

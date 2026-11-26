@@ -1,3 +1,4 @@
+import { DEFAULT_LAYOUT, type AssistantLayout } from "@scholarkit/assistant";
 import { isDesktop } from "@scholarkit/editor/lib/platform";
 import { t } from "@scholarkit/i18n";
 
@@ -81,6 +82,9 @@ export const PROVIDERS: Provider[] = [
 export const providerById = (id: string | null | undefined): Provider | null =>
   PROVIDERS.find((provider) => provider.id === id) ?? null;
 
+/** Where the answers come from: our model (Plus and Pro) or the provider set up here. */
+export type AssistantSource = "scholarkit" | "own";
+
 /** The assistant's settings, kept by this computer. The key is kept apart, in the system's credential store. */
 export interface AssistantSettings {
   provider: string | null;
@@ -88,6 +92,10 @@ export interface AssistantSettings {
   model: string;
   /** Whether the assistant reads new sources as they come in. */
   auto: boolean;
+  /** As chosen; null until you pick one (see `sourceOf`). */
+  source: AssistantSource | null;
+  /** The floating bar over the binder (the default) or the panel docked on the right. */
+  layout: AssistantLayout;
 }
 
 export const NO_ASSISTANT: AssistantSettings = {
@@ -95,7 +103,12 @@ export const NO_ASSISTANT: AssistantSettings = {
   baseUrl: "",
   model: "",
   auto: true,
+  source: null,
+  layout: DEFAULT_LAYOUT,
 };
+
+/** How our model is named where the assistant's work is marked. */
+export const OUR_MODEL = "Scholarkit AI";
 
 /** The host of an address; empty when it isn't one. */
 export function hostOf(url: string): string {
@@ -120,10 +133,27 @@ export function isLocalUrl(url: string): boolean {
 }
 
 /**
+ * Where the answers come from. Our model needs a Scholarkit account
+ * (`account`); without a choice, a provider set up here wins, as it
+ * did before our model.
+ */
+export function sourceOf(
+  settings: AssistantSettings,
+  account: boolean,
+): AssistantSource {
+  if (!account) return "own";
+  return settings.source ?? (ownReady(settings) ? "own" : "scholarkit");
+}
+
+/**
  * Where your material goes, for the settings and for the mark on what
  * the assistant wrote: null when the model runs on this computer.
  */
-export function receiverOf(settings: AssistantSettings): string | null {
+export function receiverOf(
+  settings: AssistantSettings,
+  account = false,
+): string | null {
+  if (sourceOf(settings, account) === "scholarkit") return OUR_MODEL;
   if (!settings.provider || isLocalUrl(settings.baseUrl)) return null;
   const provider = providerById(settings.provider);
   const host = hostOf(settings.baseUrl);
@@ -131,8 +161,9 @@ export function receiverOf(settings: AssistantSettings): string | null {
   return host || null;
 }
 
-/** The provider as the file names it: its name, or "this computer". */
-export function providerLabel(settings: AssistantSettings): string {
+/** The provider as the file names it: its name, or "this computer"; empty for our model. */
+export function providerLabel(settings: AssistantSettings, account = false): string {
+  if (sourceOf(settings, account) === "scholarkit") return "";
   if (isLocalUrl(settings.baseUrl)) return "this computer";
   const provider = providerById(settings.provider);
   return provider && provider.id !== "custom"
@@ -141,15 +172,20 @@ export function providerLabel(settings: AssistantSettings): string {
 }
 
 /**
- * Whether the assistant can run here: a provider, an address and a
- * model. In the browser only a model on this computer can be reached:
- * providers don't answer a web page, and a key has no safe place there.
+ * Whether the provider set up here can answer: a provider, an address
+ * and a model. In the browser only a model on this computer can be
+ * reached: providers don't answer a web page, and a key has no safe
+ * place there.
  */
-export function canRun(settings: AssistantSettings): boolean {
+export function ownReady(settings: AssistantSettings): boolean {
   if (!settings.provider || !settings.baseUrl.trim() || !settings.model.trim())
     return false;
   return isDesktop || isLocalUrl(settings.baseUrl);
 }
+
+/** Whether the assistant can run here: on our model with an account, or on the provider set up here. */
+export const canRun = (settings: AssistantSettings, account = false): boolean =>
+  sourceOf(settings, account) === "scholarkit" || ownReady(settings);
 
 /** Providers that can be chosen here. */
 export const choosable = (): Provider[] =>
@@ -167,6 +203,9 @@ export function loadAssistant(): AssistantSettings {
         baseUrl: typeof value.baseUrl === "string" ? value.baseUrl : "",
         model: typeof value.model === "string" ? value.model : "",
         auto: value.auto !== false,
+        source:
+          value.source === "scholarkit" || value.source === "own" ? value.source : null,
+        layout: value.layout === "docked" ? "docked" : DEFAULT_LAYOUT,
       };
     }
   } catch {

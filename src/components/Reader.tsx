@@ -1058,6 +1058,15 @@ export interface ReaderProps {
   notes: React.ReactNode;
   /** Saves the source with recognized text in it; without it, a scan is only read. */
   onSaveFile?: (bytes: Uint8Array) => Promise<void>;
+  /** At the end of the bar, such as the Ask button. */
+  actions?: React.ReactNode;
+  /** Asks the assistant about a selection: its words, its page and where it is on screen. */
+  onAsk?: (selection: {
+    text: string;
+    page: number | null;
+    left: number;
+    top: number;
+  }) => void;
 }
 
 /** A source to read and highlight, with the highlights and notes next to it. */
@@ -1102,6 +1111,8 @@ export function Reader(props: ReaderProps) {
   const [menu, setMenu] = useState<{
     x: number;
     y: number;
+    /** The selection's lower edge, for the Ask menu under it. */
+    bottom: number;
     text: string;
     page: number | null;
   } | null>(null);
@@ -1240,6 +1251,7 @@ export function Reader(props: ReaderProps) {
     setMenu({
       x: Math.min(Math.max(rect.left + rect.width / 2, 140), window.innerWidth - 140),
       y: rect.top,
+      bottom: rect.bottom,
       text,
       page: paged && shell ? Number(shell.dataset.page) : null,
     });
@@ -1384,6 +1396,7 @@ export function Reader(props: ReaderProps) {
             <ZoomIn className="size-3.5" aria-hidden />
           </button>
         </div>
+        {props.actions}
       </div>
       <div className="reader-body">
         <div
@@ -1550,6 +1563,24 @@ export function Reader(props: ReaderProps) {
               {categoryLabel(category.id)}
             </button>
           ))}
+          {props.onAsk && (
+            <button
+              type="button"
+              className="highlight-ask"
+              onClick={() => {
+                props.onAsk?.({
+                  text: menu.text,
+                  page: menu.page,
+                  left: menu.x - 140,
+                  top: menu.bottom + 8,
+                });
+                setMenu(null);
+              }}
+            >
+              <Sparkles className="size-3 text-tint" aria-hidden />
+              {t("Ask")}
+            </button>
+          )}
         </div>
       )}
     </div>

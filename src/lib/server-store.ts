@@ -1,4 +1,5 @@
 import * as Y from "yjs";
+import { serverTurn } from "@scholarkit/assistant";
 import { browserSaveFile } from "@scholarkit/editor/lib/account";
 import { mediaType } from "@scholarkit/editor/lib/file-types";
 import type { Project } from "@scholarkit/editor/lib/paths";
@@ -268,6 +269,8 @@ export function serverStore(
     searchPapers: (q) => server.searchPapers(q),
     paperSearchAccess: () => server.paperSearchAccess(),
     openAlexKey: openAlexKeyOf(server),
+    assistantTurn: serverTurn({ app: "binder" }),
+    usage: () => server.usage(),
     download: async (url, path) => {
       const file = fetched.get(url) ?? (await server.fetchWeb(url));
       fetched.delete(url);

@@ -24,6 +24,7 @@ import {
 } from "@/lib/server";
 import { desktopStore, type BinderStore } from "@/lib/store";
 import { updater } from "@/lib/updates";
+import { desktopTurn } from "@/lib/assistant/transport";
 import { t, tn } from "@scholarkit/i18n";
 import { saveBeforeSwitch } from "@/lib/languages";
 import { setPaperSearch, setWorkLookup } from "@scholarkit/editor/references/lookup";
@@ -124,7 +125,8 @@ async function openSession(dir: string, signedIn: boolean): Promise<Session> {
     projectId: null,
     sync: null,
   };
-  // Free PDFs are found through the account's server, whether the binder syncs or not.
+  // Free PDFs, paper search and the assistant on our model go through the account's server,
+  // whether the binder syncs or not.
   if (signedIn) {
     session.appStore = {
       ...store,
@@ -132,6 +134,8 @@ async function openSession(dir: string, signedIn: boolean): Promise<Session> {
       searchPapers: (q) => server.searchPapers(q),
       paperSearchAccess: () => server.paperSearchAccess(),
       openAlexKey: openAlexKeyOf(server),
+      assistantTurn: desktopTurn,
+      usage: () => server.usage(),
     };
   }
   const link = await invoke<Link | null>("link_load", { dir }).catch(() => null);

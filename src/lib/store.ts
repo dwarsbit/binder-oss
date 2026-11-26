@@ -3,6 +3,8 @@ import { mediaType } from "@scholarkit/editor/lib/file-types";
 import type { Project } from "@scholarkit/editor/lib/paths";
 import type { Folder } from "@scholarkit/editor/lib/link-sync";
 import type { AssetRef, PageChange } from "@scholarkit/editor/lib/project-doc";
+import type { SendTurn } from "@scholarkit/assistant";
+import type { Usage } from "@scholarkit/editor/lib/account";
 import type { PaperSearch } from "@scholarkit/editor/references/lookup";
 import { t } from "@scholarkit/i18n";
 
@@ -54,6 +56,10 @@ export interface BinderStore {
   paperSearchAccess?(): Promise<unknown>;
   /** The OpenAlex key kept with the account, for paper search on any plan. */
   openAlexKey?: OpenAlexKeyStore;
+  /** One assistant turn on our model (Plus and Pro). Only with a Scholarkit account. */
+  assistantTurn?: SendTurn;
+  /** What the account uses of its plan, for the assistant's usage line. Only with a Scholarkit account. */
+  usage?(): Promise<Usage | null>;
 }
 
 /** An OpenAlex key kept with the Scholarkit account; only its last four characters come back. */

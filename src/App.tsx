@@ -155,13 +155,29 @@ import {
   assistantSnapshot,
   canRun,
   isLocalUrl,
+  OUR_MODEL,
+  ownReady,
   providerLabel,
   receiverOf,
+  saveAssistant,
+  sourceOf,
   subscribeAssistant,
+  type AssistantSettings,
 } from "@/lib/assistant/providers";
 import { budgetFor, readWithAssistant } from "@/lib/assistant/reading";
 import { useAssistantRuns, type Start } from "@/lib/assistant/runs";
-import { completer } from "@/lib/assistant/transport";
+import { completeWith, ownTurn } from "@/lib/assistant/transport";
+import { BinderChat, useChat, type ChatHost } from "@/lib/assistant/chat";
+import { quoteWords } from "@/lib/assistant/passages";
+import type { PropertyChange } from "@/lib/assistant/tools";
+import {
+  AskAssistantButton,
+  AssistantDock,
+  AssistantFloatingLayer,
+  AssistantMenuLayer,
+  sourceInfo,
+  type AssistantProps,
+} from "@/components/Assistant";
 import { keepPage } from "@/lib/webpage";
 import { authorsOf, openEpub } from "@/lib/epub";
 import { clipHighlights, sameUrl, subscribeClips } from "@/lib/clipper";
@@ -325,6 +341,8 @@ export default function App({
   // The open item's title and path as links last knew them.
   const linked = useRef<{ path: string; title: string } | null>(null);
   const assistant = useSyncExternalStore(subscribeAssistant, assistantSnapshot);
+  // Our model needs a Scholarkit account; the store has a way to it then.
+  const signedIn = Boolean(store.assistantTurn);
   // Sources added since the binder opened, for the assistant to read once their text is in.
   const newSources = useRef(new Set<string>());
   // Items that got a new path, by their old one, for work that began before.
@@ -764,8 +782,8 @@ export default function App({
   const addThought = (text: string) =>
     addItem({ ...thoughtParts(text), kind: "thought" });
 
-  /** Adds a paper a search found, with its free PDF where there is one. */
-  const addPaper = async (paper: FoundPaper) => {
+  /** Adds a paper a search found, with its free PDF where there is one, and shows it unless told not to. */
+  const addPaper = async (paper: FoundPaper, show = true) => {
     for (const [kind, id] of [
       ["doi", paper.doi],
       ["arxiv", paper.arxiv],
@@ -787,7 +805,7 @@ export default function App({
     }
     const path = await addItem(itemOfReference(foundWork(work, [])));
     if (path && paper.doi) void findFreePdf(path, paper.doi, { quiet: true });
-    showAdded(path);
+    if (show) showAdded(path);
   };
 
   /**
@@ -846,8 +864,8 @@ export default function App({
     path: string,
     doi: string,
     options: { quiet?: boolean } = {},
-  ) => {
-    if (!store.openAccessPdfs || !store.download) return;
+  ): Promise<boolean> => {
+    if (!store.openAccessPdfs || !store.download) return false;
     const toggle = (on: boolean) =>
       setFindingPdf((paths) => {
         const next = new Set(paths);
@@ -860,20 +878,22 @@ export default function App({
       const pdf = await firstPdf(await store.openAccessPdfs(doi), fetchForBinder);
       if (!pdf) {
         setNoFreePdf((dois) => new Set(dois).add(doi.toLowerCase()));
-        return;
+        return false;
       }
       // The item may have been renamed or deleted while Binder looked.
       const now = pathNow(path);
       const source = fresh.current?.pages[now];
-      if (source === undefined || readItem(now, source).file) return;
+      if (source === undefined || readItem(now, source).file) return false;
       const file = now.replace(/\.md$/i, ".pdf");
       await store.download(pdf, file);
       attachFile(now, file);
       setProblem(null);
+      return true;
     } catch (error) {
       if (!options.quiet) {
         setProblem(t("No free PDF was saved. {error}", { error: messageOf(error) }));
       }
+      return false;
     } finally {
       toggle(false);
     }
@@ -1102,6 +1122,26 @@ export default function App({
     return now;
   };
 
+  /** The model that answers now: ours through the account, or the one set up here; null when none can. */
+  const modelFor = (settings: AssistantSettings) =>
+    sourceOf(settings, signedIn) === "scholarkit"
+      ? (store.assistantTurn ?? null)
+      : ownReady(settings)
+        ? ownTurn(settings)
+        : null;
+
+  /**
+   * Whether new sources go to the assistant as they come in. On our model
+   * only when you chose it in Settings: it was off before there was one.
+   */
+  const readsNewSources = () => {
+    const settings = assistantSnapshot();
+    if (!settings.auto) return false;
+    if (sourceOf(settings, signedIn) === "own") return true;
+    const plan = chat.state.usage?.plan;
+    return settings.source === "scholarkit" && (plan === "plus" || plan === "pro");
+  };
+
   /** The assistant reads an item's source and writes what it found next to the item. */
   const startReading: Start = async (path, signal, progress) => {
     const current = fresh.current;
@@ -1110,8 +1150,9 @@ export default function App({
     if (!entry.file || !isReadable(entry.file))
       throw new Error(t("It has no PDF or kept page to read."));
     const settings = assistantSnapshot();
-    if (!canRun(settings))
-      throw new Error(t("Set up the assistant in Settings first."));
+    const send = modelFor(settings);
+    if (!send) throw new Error(t("Set up the assistant in Settings first."));
+    const ours = sourceOf(settings, signedIn) === "scholarkit";
     const file = entry.file;
     progress(t("Reading the text"));
     const pages = indexed.current?.[file]?.pages.length
@@ -1127,10 +1168,10 @@ export default function App({
       highlights: readHighlights(current.pages[highlightsPathOf(path)]).highlights,
       linkTo: ({ page, text }) =>
         placeHref(parentOf(path), { file, page, highlight: null, text }),
-      complete: completer(settings),
-      model: settings.model,
-      provider: providerLabel(settings),
-      budget: budgetFor(isLocalUrl(settings.baseUrl)),
+      complete: completeWith(send),
+      model: ours ? OUR_MODEL : settings.model,
+      provider: providerLabel(settings, signedIn),
+      budget: budgetFor(!ours && isLocalUrl(settings.baseUrl)),
       written: today(),
       signal,
       progress,
@@ -1166,9 +1207,110 @@ export default function App({
   };
   const runs = useAssistantRuns(startReading);
 
+  // The assistant's conversation: one per open binder, with its tools on the binder.
+  const chatHost = useRef<ChatHost | null>(null);
+  const [chat] = useState(
+    () =>
+      new BinderChat(() => chatHost.current!, {
+        papers: Boolean(store.searchPapers),
+        lookUp: signedIn,
+        freePdfs: Boolean(store.openAccessPdfs && store.download),
+      }),
+  );
+  const chatState = useChat(chat);
+  // The text of sources the search index hasn't read yet, read once.
+  const readTexts = useRef(new Map<string, Promise<string[]>>());
+  useEffect(() => {
+    chatHost.current = {
+      items: () => (fresh.current ? itemsOf(fresh.current) : []),
+      allowed: (entry) =>
+        Boolean(fresh.current && readBinderInfo(fresh.current).assistant) &&
+        entry.assistant,
+      question: () => (fresh.current ? readBinderInfo(fresh.current).question : ""),
+      highlights: (path) =>
+        readHighlights(fresh.current?.pages[highlightsPathOf(path)]).highlights,
+      pagesOf: async (entry) => {
+        const file = entry.file;
+        if (!file || !isReadable(file) || !fileSet.has(file)) return null;
+        const known = indexed.current?.[file]?.pages;
+        if (known?.length) return known;
+        let text = readTexts.current.get(file);
+        if (!text) {
+          text = readText(store, file);
+          readTexts.current.set(file, text);
+        }
+        return text;
+      },
+      searchPapers: store.searchPapers,
+      lookUp: (kind, id) => lookUp({ kind, id }, []),
+      freePdfs: store.openAccessPdfs,
+      canRead: (entry) => Boolean(fresh.current && mayRead(entry, fresh.current)),
+      send: () => modelFor(assistantSnapshot()),
+      ours: () => sourceOf(assistantSnapshot(), signedIn) === "scholarkit",
+      openItem: () => readingItem ?? item,
+      applyProperties: (path, changes) => applyProperties(path, changes),
+      saveNote: async (title, markdown) => {
+        const path = await addItem({ title, kind: "note", markdown });
+        if (!path) throw new Error(t("The note couldn't be saved."));
+        return path;
+      },
+      keepHighlights: (path, kept) =>
+        changeHighlights(path, (list) => {
+          const taken = list.map((h) => h.id);
+          const added = kept.map((h) => {
+            const id = newHighlightId(taken);
+            taken.push(id);
+            return { ...h, id };
+          });
+          return [...list, ...added];
+        }),
+      addPaper: (paper) => addPaper(paper, false),
+      savePdf: async (path, doi) => {
+        if (!(await findFreePdf(path, doi)))
+          throw new Error(
+            t("The free PDF couldn't be saved: the publisher may block downloads."),
+          );
+      },
+      readInBackground: (paths) => runs.ask(paths),
+      usage: store.usage,
+    };
+  });
+  // Our model's plan and month used, for the usage line and reading new sources.
+  useEffect(() => {
+    if (signedIn) void chat.refreshUsage();
+  }, [signedIn, chat]);
+
+  /** Sets what a card of the assistant proposes. */
+  const applyProperties = (path: string, changes: PropertyChange[]) => {
+    const latestSource = fresh.current?.pages[path];
+    if (latestSource === undefined) throw new Error(t("The item is gone."));
+    const entry = readItem(path, latestSource);
+    const next: ItemChanges = {};
+    for (const change of changes) {
+      if (change.field === "kind") next.kind = change.after;
+      else if (change.field === "authors")
+        next.authors = change.after.split(/\s*;\s*/).filter(Boolean);
+      else if (change.field === "year") next.year = change.after;
+      else if (change.field === "publishedIn") next["published-in"] = change.after;
+      else if (change.field === "publisher") next.publisher = change.after;
+      else if (change.field === "doi") next.doi = change.after;
+      else if (change.field === "tags")
+        next.tags = [
+          ...new Set([...entry.tags, ...change.after.split(/\s*,\s*/).filter(Boolean)]),
+        ];
+    }
+    if (Object.keys(next).length) changeItem(path, next);
+    const title = changes.find((change) => change.field === "title")?.after;
+    const now = fresh.current?.pages[path];
+    if (title && now !== undefined) {
+      writeSource(path, writePage({ ...readPage(now), title }));
+      if (path === selected) syncFileName();
+    }
+  };
+
   /** Whether the assistant may read an item now. */
   const mayRead = (entry: Item, current: Project) =>
-    canRun(assistantSnapshot()) &&
+    canRun(assistantSnapshot(), signedIn) &&
     readBinderInfo(current).assistant &&
     entry.assistant &&
     Boolean(entry.file && isReadable(entry.file));
@@ -1189,7 +1331,7 @@ export default function App({
       if (!entry.file || !index[entry.file]) continue;
       newSources.current.delete(path);
       if (
-        assistantSnapshot().auto &&
+        readsNewSources() &&
         mayRead(entry, current) &&
         !(assistantPathOf(now) in current.pages)
       )
@@ -1783,7 +1925,7 @@ export default function App({
             ? "ready"
             : "unavailable"
       }
-      receiver={receiverOf(assistant)}
+      receiver={receiverOf(assistant, signedIn)}
       running={runs.state.running?.path === item.path ? runs.state.running.step : null}
       queued={runs.state.queued.includes(item.path)}
       error={runs.state.errors[item.path] ?? null}
@@ -1865,6 +2007,36 @@ export default function App({
     </div>
   );
 
+  const docked = assistant.layout === "docked";
+  const assistantProps: AssistantProps = {
+    chat,
+    openItem: readingItem ?? item,
+    source: sourceInfo(assistant, signedIn, chatState.usage, ownReady(assistant)),
+    onOpenQuote: (card) =>
+      readSource(card.path, {
+        page: card.page,
+        highlight: null,
+        find: null,
+        passage: quoteWords(card.quote),
+      }),
+    onOpenItem: showItem,
+    onSettings: () => setSettings(true),
+    onLayout: (next) => saveAssistant({ ...assistantSnapshot(), layout: next }),
+    reading: {
+      state: runs.state,
+      titleOf: (path) =>
+        items.find((entry) => entry.path === path)?.title ?? t("a source"),
+      onStop: runs.stop,
+    },
+  };
+  const askButton = (
+    <AskAssistantButton
+      chat={chat}
+      docked={docked}
+      readingPath={readingItem?.path ?? null}
+    />
+  );
+
   const reader = readingItem && readingItem.file && reading && (
     <Reader
       key={readingItem.file}
@@ -1906,6 +2078,13 @@ export default function App({
           .run();
       }}
       target={reading.target}
+      actions={askButton}
+      onAsk={(selected) => {
+        chat.openMenu(
+          { path: readingItem.path, text: selected.text, page: selected.page },
+          { left: selected.left, top: selected.top },
+        );
+      }}
       onBack={() => setReading(null)}
       backLabel={t("Back to the item")}
       notes={
@@ -1933,7 +2112,11 @@ export default function App({
 
   const shell = (
     <div
-      className={cn("app", navOpen && "nav-open")}
+      className={cn(
+        "app",
+        navOpen && "nav-open",
+        docked && chatState.dockShown && "has-dock",
+      )}
       style={{ "--sidebar-width": `${sidebarWidth}px` } as React.CSSProperties}
     >
       <Sidebar
@@ -2096,6 +2279,7 @@ export default function App({
                   ))}
                 </div>
               )}
+              {askButton}
               {account}
             </header>
 
@@ -2169,7 +2353,14 @@ export default function App({
           </span>
           {selected && <span className="path truncate font-mono">{selected}</span>}
         </footer>
+        {!docked && <AssistantFloatingLayer {...assistantProps} />}
       </main>
+      {docked && <AssistantDock {...assistantProps} />}
+      <AssistantMenuLayer
+        chat={chat}
+        docked={docked}
+        papers={Boolean(store.searchPapers)}
+      />
 
       {dropping && <div className="drop-cover">{t("Drop to add to your inbox")}</div>}
       {adding && (
@@ -2235,6 +2426,7 @@ export default function App({
         <SettingsDialog
           onClose={() => setSettings(false)}
           openAlexKey={store.openAlexKey}
+          account={signedIn}
           assistantOn={info.assistant}
           onAssistantOn={(on) => {
             const latestProject = fresh.current;

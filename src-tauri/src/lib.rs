@@ -1,5 +1,6 @@
 mod account;
 mod assistant;
+mod assistant_server;
 mod crash;
 mod export;
 mod files;
@@ -68,7 +69,8 @@ pub fn run() {
             assistant::assistant_key_set,
             assistant::assistant_key_delete,
             assistant::assistant_models,
-            assistant::assistant_complete,
+            assistant::assistant_chat,
+            assistant_server::assistant_turn,
             assistant::assistant_cancel,
         ])
         .run(tauri::generate_context!())

@@ -681,8 +681,11 @@ export function SettingsDialog({
   assistantOn,
   onAssistantOn,
   openAlexKey,
+  account = false,
 }: {
   onClose: () => void;
+  /** Whether a Scholarkit account is signed in, for our model. */
+  account?: boolean;
   /** Whether this binder lets the assistant in. */
   assistantOn: boolean;
   onAssistantOn: (on: boolean) => void;
@@ -693,7 +696,11 @@ export function SettingsDialog({
     <Dialog title={t("Settings")} onClose={onClose}>
       <div className="settings mt-3">
         <LanguageSettings />
-        <AssistantSettings binderOn={assistantOn} onBinderOn={onAssistantOn} />
+        <AssistantSettings
+          binderOn={assistantOn}
+          onBinderOn={onAssistantOn}
+          account={account}
+        />
         <h2 className="mt-5 mb-2 text-xs font-medium text-muted-foreground">
           {t("Sources")}
         </h2>

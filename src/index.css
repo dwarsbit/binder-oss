@@ -3,6 +3,7 @@
 @import "@scholarkit/editor/editor.css";
 @import "@scholarkit/updates/updates.css";
 @import "@scholarkit/account-menu/account-menu.css";
+@import "@scholarkit/assistant/assistant.css";
 
 /* ---------- Binder's color: petrol teal, where Cursive has rust ---------- */
 :root {
@@ -414,8 +415,17 @@ textarea.page-title {
 
 /* A narrow window: the sidebar slides in over the page. */
 @media (max-width: 860px) {
-  .app {
+  .app,
+  .app.has-dock {
     grid-template-columns: minmax(0, 1fr);
+  }
+  /* On a narrow window the panel lies over the page. */
+  .assistant-dock {
+    position: fixed;
+    z-index: 30;
+    inset: 8px 8px 8px auto;
+    width: min(360px, calc(100vw - 16px));
+    box-shadow: var(--pop-shadow);
   }
   .sidebar-resizer {
     display: none;
@@ -690,6 +700,107 @@ textarea.page-title {
 }
 .highlight-menu button:hover {
   background: var(--muted);
+}
+.highlight-menu .highlight-ask {
+  margin-left: 2px;
+  border-left: 1px solid var(--border);
+  border-radius: 0 5px 5px 0;
+}
+
+/* ---------- the assistant ---------- */
+/* The floating bar sits above the status bar. */
+main .assistant-floating {
+  bottom: 40px;
+}
+/* The docked panel: a third column, a card like the page. */
+.app.has-dock {
+  grid-template-columns: var(--sidebar-width, 248px) minmax(0, 1fr) 360px;
+}
+.assistant-dock {
+  display: flex;
+  min-height: 0;
+  min-width: 0;
+  flex-direction: column;
+  overflow: hidden;
+  border-radius: 10px;
+  background: var(--card);
+  box-shadow:
+    0 1px 2px oklch(14.5% 0.008 326 / 5%),
+    0 0 0 1px var(--border);
+}
+.assistant-dock > * {
+  min-height: 0;
+  flex: 1;
+}
+.assistant-reading {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
+  padding: 5px 10px;
+  border-radius: 8px;
+  background: var(--muted);
+  font-size: 12px;
+}
+.assistant-props {
+  display: grid;
+  gap: 4px;
+  margin: 0;
+  padding: 8px 10px;
+  font-size: 12.5px;
+}
+.assistant-props > div {
+  display: grid;
+  grid-template-columns: 96px minmax(0, 1fr);
+  gap: 8px;
+}
+.assistant-props dt {
+  color: var(--muted-foreground);
+}
+.assistant-props dd {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  margin: 0;
+}
+.assistant-card-title {
+  min-width: 0;
+  overflow: hidden;
+  font-weight: 500;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.assistant-card-body {
+  max-height: 240px;
+  overflow: auto;
+  padding: 8px 10px;
+  font-size: 12.5px;
+}
+.assistant-highlights {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+  padding: 8px 10px;
+  list-style: none;
+  font-size: 12.5px;
+}
+.assistant-highlights li {
+  display: flex;
+  flex-direction: column;
+}
+.assistant-papers {
+  display: grid;
+  gap: 8px;
+}
+.assistant-link {
+  color: var(--tint-foreground);
+  font-size: 12px;
+  font-weight: 500;
+  text-align: left;
+}
+.assistant-link:hover {
+  text-decoration: underline;
+  text-underline-offset: 2px;
 }
 
 /* A PDF: pages under each other, the text to select over the picture. */

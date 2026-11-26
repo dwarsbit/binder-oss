@@ -180,46 +180,83 @@ pub fn answer_of(body: &Value) -> Result<String, String> {
     Err("The model gave an answer Binder can't read. Check the address and the model.".into())
 }
 
+/// The assistant message of a chat completion, in the OpenAI shape the
+/// window's agent loop takes: its text, and the tools it calls.
+pub fn message_of(body: &Value) -> Result<Value, String> {
+    let content = answer_of(body).or_else(|error| {
+        // A reply with only tool calls may leave the content out.
+        if body["choices"][0]["message"]["tool_calls"].is_array() {
+            Ok(String::new())
+        } else {
+            Err(error)
+        }
+    })?;
+    let mut message = json!({ "role": "assistant", "content": content });
+    if let Some(calls) = body["choices"][0]["message"]["tool_calls"]
+        .as_array()
+        .filter(|calls| !calls.is_empty())
+    {
+        message["tool_calls"] = Value::Array(calls.clone());
+    }
+    Ok(message)
+}
+
 /// Requests in flight, by the id the window gave them, so `assistant_cancel` can stop one.
 #[derive(Default)]
 pub struct Requests(Mutex<HashMap<u32, oneshot::Sender<()>>>);
 
+impl Requests {
+    /// Runs `work` until it ends or `assistant_cancel` stops it.
+    pub async fn run<T>(
+        &self,
+        request_id: u32,
+        work: impl std::future::Future<Output = Result<T, String>>,
+    ) -> Result<T, String> {
+        let (stop, stopped) = oneshot::channel();
+        self.0
+            .lock()
+            .map_err(|e| e.to_string())?
+            .insert(request_id, stop);
+        let result = tokio::select! {
+            result = work => result,
+            _ = stopped => Err("cancelled".into()),
+        };
+        if let Ok(mut map) = self.0.lock() {
+            map.remove(&request_id);
+        }
+        result
+    }
+}
+
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
-pub struct CompleteArgs {
+pub struct ChatArgs {
     pub provider: String,
     pub base_url: String,
     pub model: String,
     /// Chat messages in the OpenAI shape, the system message first.
     pub messages: Vec<Value>,
+    /// Tools the model may call, in the OpenAI shape; none for the background reader.
+    #[serde(default)]
+    pub tools: Vec<Value>,
     pub request_id: u32,
 }
 
-/// Asks the model once and gives its answer.
+/// One turn at the provider: the assistant message, with the tools it calls.
 #[tauri::command]
-pub async fn assistant_complete(
-    args: CompleteArgs,
+pub async fn assistant_chat(
+    args: ChatArgs,
     requests: tauri::State<'_, Requests>,
-) -> Result<String, String> {
+) -> Result<Value, String> {
     let base = check_base_url(&args.base_url)?;
-    let (stop, stopped) = oneshot::channel();
-    requests
-        .0
-        .lock()
-        .map_err(|e| e.to_string())?
-        .insert(args.request_id, stop);
-    let result = tokio::select! {
-        result = complete(&base, &args) => result,
-        _ = stopped => Err("The assistant was stopped.".into()),
-    };
-    if let Ok(mut map) = requests.0.lock() {
-        map.remove(&args.request_id);
-    }
-    result
+    requests.run(args.request_id, chat(&base, &args)).await
 }
 
-async fn complete(base: &reqwest::Url, args: &CompleteArgs) -> Result<String, String> {
-    let body = json!({ "model": args.model, "messages": args.messages, "stream": false });
+async fn chat(base: &reqwest::Url, args: &ChatArgs) -> Result<Value, String> {
+    let mut body = json!({ "model": args.model, "messages": args.messages, "stream": false });
+    if !args.tools.is_empty() {
+        body["tools"] = Value::Array(args.tools.clone());
+    }
     let response = authorized(
         client()?.post(endpoint(base, "chat/completions")),
         &args.provider,
@@ -246,7 +283,7 @@ async fn complete(base: &reqwest::Url, args: &CompleteArgs) -> Result<String, St
     let body: Value = serde_json::from_str(&text).map_err(|_| {
         "The model gave an answer Binder can't read. Check the address and the model.".to_string()
     })?;
-    answer_of(&body)
+    message_of(&body)
 }
 
 /// Stops a request; an unknown id is ignored.
@@ -307,6 +344,24 @@ mod tests {
         let parts = json!({"choices": [{"message": {"content": [{"type": "text", "text": "a"}, {"text": "b"}]}}]});
         assert_eq!(answer_of(&parts).unwrap(), "ab");
         assert!(answer_of(&json!({})).is_err());
+    }
+
+    #[test]
+    fn reads_the_tools_a_reply_calls() {
+        let body = json!({"choices": [{"message": {"role": "assistant", "content": null,
+            "tool_calls": [{"id": "c1", "type": "function", "function": {"name": "search_sources", "arguments": "{}"}}]}}]});
+        let message = message_of(&body).unwrap();
+        assert_eq!(message["content"], "");
+        assert_eq!(
+            message["tool_calls"][0]["function"]["name"],
+            "search_sources"
+        );
+        let plain = json!({"choices": [{"message": {"content": "Hi."}}]});
+        assert_eq!(
+            message_of(&plain).unwrap(),
+            json!({"role": "assistant", "content": "Hi."})
+        );
+        assert!(message_of(&json!({})).is_err());
     }
 
     #[test]
