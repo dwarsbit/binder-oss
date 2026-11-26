@@ -551,6 +551,7 @@
   "BibTeX": "BibTeX",
   "Nothing in your BibTeX files matches “{query}”.": "Nichts in deinen BibTeX-Dateien passt zu „{query}“.",
   "Type to search your BibTeX files.": "Tippe, um in deinen BibTeX-Dateien zu suchen.",
+  "Find papers by their title or authors with Plus and Pro.": "Finde Artikel nach Titel oder Autoren mit Plus und Pro.",
   "Connect Zotero or add a BibTeX file to cite works from your library, or type a DOI, an ISBN, or an arXiv or PubMed ID.": "Verbinde Zotero oder füge eine BibTeX-Datei hinzu, um Werke aus deiner Bibliothek zu zitieren, oder tippe eine DOI, eine ISBN oder eine arXiv- oder PubMed-ID.",
   "↑↓ to choose, ↵ to cite": "↑↓ zum Wählen, ↵ zum Zitieren",
   "Plain text": "Einfacher Text",
