@@ -4,7 +4,7 @@
  */
 
 /** Elements kept, as they are. Anything else gives up its contents. */
-const KEEP = new Set([
+export const KEEP = new Set([
   "h1",
   "h2",
   "h3",

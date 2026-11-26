@@ -1,4 +1,5 @@
 import { extensionOf } from "./binder";
+import { chapterTexts, openEpub } from "./epub";
 import { pdfPages } from "./pdf";
 import type { BinderStore } from "./store";
 
@@ -12,13 +13,16 @@ const CACHE_VERSION = 1;
 
 /** Files Binder can read the text of. */
 export const isReadable = (path: string) =>
-  [".pdf", ".html", ".htm"].includes(extensionOf(path));
+  [".pdf", ".epub", ".html", ".htm"].includes(extensionOf(path));
 export const isPdf = (path: string) => extensionOf(path) === ".pdf";
+export const isEpub = (path: string) => extensionOf(path) === ".epub";
+/** Files whose places are numbered: the pages of a PDF, the chapters of an EPUB. */
+export const isPaged = (path: string) => isPdf(path) || isEpub(path);
 
 export interface FileText {
   /** The file's checksum when its text was read; empty when there is none. */
   hash: string;
-  /** The text, by page; a web page is one page. */
+  /** The text, by page; a web page is one page, and an EPUB has one per chapter. */
   pages: string[];
 }
 export type TextIndex = Record<string, FileText>;
@@ -50,6 +54,7 @@ export async function readText(store: BinderStore, path: string): Promise<string
   const bytes = await store.readBytes(path);
   if (!bytes) return [];
   if (isPdf(path)) return pdfPages(bytes);
+  if (isEpub(path)) return chapterTexts(openEpub(bytes));
   return htmlPages(new TextDecoder().decode(bytes));
 }
 
@@ -96,7 +101,7 @@ export async function updateIndex(
     try {
       next[path] = { hash: hashes?.[path] ?? "", pages: await readText(store, path) };
     } catch {
-      // A file pdf.js can't read has no text to search.
+      // A file Binder can't read has no text to search.
       next[path] = { hash: hashes?.[path] ?? "", pages: [] };
     }
     changed = true;

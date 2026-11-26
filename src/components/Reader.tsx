@@ -2,8 +2,12 @@ import {
   ArrowLeft,
   Check,
   ChevronDown,
+  ChevronLeft,
+  ChevronRight,
   ChevronUp,
   GripVertical,
+  ListTree,
+  ScanText,
   Search,
   Sparkles,
   TextQuote,
@@ -20,11 +24,32 @@ import {
   CATEGORIES,
   categoryLabel,
   oneLine,
+  placeMark,
+  unitOf,
   type Category,
   type Highlight,
+  type Unit,
 } from "@/lib/highlights";
+import {
+  chapterHtml,
+  chapterTexts,
+  EpubError,
+  openEpub,
+  type EpubContentsEntry,
+} from "@/lib/epub";
+import {
+  defaultTextLanguages,
+  RecognizeError,
+  recognizeText,
+  scanStateOf,
+  TEXT_LANGUAGES,
+  textLanguagesLabel,
+  type Recognizing,
+  type ScanState,
+} from "@/lib/ocr";
 import { openPdf, pageText, type PdfDocument } from "@/lib/pdf";
-import { htmlPages, isPdf, matchesIn } from "@/lib/text";
+import { loadTextLanguages, saveTextLanguages } from "@/lib/prefs";
+import { htmlPages, isEpub, isPaged, isPdf, matchesIn } from "@/lib/text";
 import { keptArticle } from "@/lib/webpage";
 import { t } from "@scholarkit/i18n";
 
@@ -158,6 +183,8 @@ interface SourceProps {
   onPage: (page: number) => void;
   onPages: (pages: number) => void;
   onError: (message: string) => void;
+  /** A PDF once it is open, and null when it closes. */
+  onDocument?: (doc: PdfDocument | null) => void;
 }
 
 /** A PDF, page under page, drawn as the pages come into view. */
@@ -189,15 +216,20 @@ function PdfSource(props: SourceProps) {
           found.push({ width: viewport.width, height: viewport.height });
         }
         if (cancelled) return;
+        // A new file, such as one with recognized text, draws every page again.
+        for (const page of drawn.current.values()) page.cancel();
+        drawn.current.clear();
         setSizes(found);
         setDoc(loaded);
         latest.current.onPages(loaded.numPages);
+        latest.current.onDocument?.(loaded);
       })
       .catch(() => {
         if (!cancelled) latest.current.onError(t("This PDF can't be read."));
       });
     return () => {
       cancelled = true;
+      latest.current.onDocument?.(null);
       void opened?.loadingTask.destroy();
     };
   }, [bytes]);
@@ -459,14 +491,438 @@ function HtmlSource(props: SourceProps) {
   );
 }
 
+/** Where a chapter of an EPUB leads on: the one before it, and the one after. */
+function ChapterTurn({
+  chapter,
+  titles,
+  onChapter,
+}: {
+  chapter: number;
+  titles: string[];
+  onChapter: (chapter: number) => void;
+}) {
+  const before = chapter > 1 ? chapter - 1 : null;
+  const after = chapter < titles.length ? chapter + 1 : null;
+  if (!before && !after) return null;
+  const name = (n: number) => titles[n - 1] || t("Chapter {number}", { number: n });
+  return (
+    <nav className="epub-turn" aria-label={t("Chapters")}>
+      {before ? (
+        <button type="button" onClick={() => onChapter(before)}>
+          <ChevronLeft className="size-3.5 flex-none" aria-hidden />
+          <span className="truncate">{name(before)}</span>
+        </button>
+      ) : (
+        <span />
+      )}
+      {after && (
+        <button type="button" className="justify-end" onClick={() => onChapter(after)}>
+          <span className="truncate">{t("Next: {title}", { title: name(after) })}</span>
+          <ChevronRight className="size-3.5 flex-none" aria-hidden />
+        </button>
+      )}
+    </nav>
+  );
+}
+
+/** What the reader's bar shows of an EPUB: its chapters and its table of contents. */
+export interface BookOutline {
+  titles: string[];
+  contents: EpubContentsEntry[];
+}
+
+/** An EPUB, one chapter at a time, as text to read. */
+function EpubSource(
+  props: SourceProps & { onOutline: (outline: BookOutline) => void },
+) {
+  const { bytes, zoom, highlights, finding, request, scroller } = props;
+  const latest = useRef(props);
+  useEffect(() => {
+    latest.current = props;
+  });
+  const book = useMemo(() => {
+    try {
+      return openEpub(bytes);
+    } catch (error) {
+      return error instanceof EpubError && error.reason === "locked" ? "locked" : null;
+    }
+  }, [bytes]);
+  const [chapter, setChapter] = useState(() => Math.max(request?.page ?? 1, 1));
+  const done = useRef(0);
+  const page = useRef<HTMLDivElement>(null);
+  const article = useRef<HTMLElement>(null);
+
+  useEffect(() => {
+    if (book === "locked")
+      latest.current.onError(
+        t("This book is locked with DRM, so Binder can't open it."),
+      );
+    else if (!book) latest.current.onError(t("This EPUB can't be read."));
+    else {
+      latest.current.onPages(book.chapters.length);
+      latest.current.onOutline({
+        titles: book.chapters.map((c) => c.title),
+        contents: book.contents,
+      });
+    }
+  }, [book]);
+
+  // The chapter shown, with its images from the book.
+  const shown = useMemo(() => {
+    if (!book || book === "locked") return null;
+    const urls: string[] = [];
+    const html = chapterHtml(book, chapter, {
+      image: (path, type) => {
+        const url = URL.createObjectURL(
+          new Blob([book.files[path] as BlobPart], { type }),
+        );
+        urls.push(url);
+        return url;
+      },
+    });
+    return { html, urls };
+  }, [book, chapter]);
+  useEffect(
+    () => () => shown?.urls.forEach((url) => URL.revokeObjectURL(url)),
+    [shown],
+  );
+
+  const turn = setChapter;
+
+  // A place asked for in another chapter: that chapter first.
+  const [seenRequest, setSeenRequest] = useState<number | null>(null);
+  if (request && request.id !== seenRequest && book && book !== "locked") {
+    setSeenRequest(request.id);
+    const wanted = Math.min(Math.max(request.page ?? chapter, 1), book.chapters.length);
+    if (wanted !== chapter) setChapter(wanted);
+  }
+
+  useLayoutEffect(() => {
+    if (article.current) article.current.innerHTML = shown?.html ?? "";
+    const root = scroller.current;
+    if (root) scrollElement(root, 0);
+    latest.current.onPage(chapter);
+  }, [shown, chapter, scroller]);
+
+  useEffect(() => {
+    const shell = page.current;
+    const text = article.current;
+    if (!shell || !text) return;
+    const paint = () => {
+      paintMarks(
+        shell,
+        text,
+        latest.current.highlights,
+        latest.current.finding,
+        chapter,
+      );
+      const wanted = latest.current.request;
+      if (
+        wanted &&
+        wanted.id !== done.current &&
+        (wanted.page ?? chapter) === chapter &&
+        reach(shell, wanted)
+      )
+        done.current = wanted.id;
+    };
+    paint();
+    const observer = new ResizeObserver(paint);
+    observer.observe(text);
+    return () => observer.disconnect();
+  }, [shown, chapter, highlights, finding, zoom, request]);
+
+  if (!book || book === "locked") return null;
+  return (
+    <div
+      ref={page}
+      className="html-page epub-page"
+      data-page={chapter}
+      style={{ fontSize: `${17 * zoom}px` }}
+    >
+      <article
+        ref={article}
+        className="html-article"
+        onClick={(event) => {
+          const link = (event.target as Element).closest("a");
+          if (!link || !window.getSelection()?.isCollapsed) return;
+          const inBook = Number(link.getAttribute("data-chapter"));
+          const href = link.getAttribute("href");
+          if (inBook) {
+            event.preventDefault();
+            turn(inBook);
+          } else if (href) {
+            event.preventDefault();
+            openExternal(href);
+          }
+        }}
+      />
+      <ChapterTurn
+        chapter={chapter}
+        titles={book.chapters.map((c) => c.title)}
+        onChapter={turn}
+      />
+    </div>
+  );
+}
+
+/** The table of contents of an EPUB, in the reader's bar. */
+function ContentsMenu({
+  outline,
+  chapter,
+  onChapter,
+}: {
+  outline: BookOutline;
+  chapter: number;
+  onChapter: (chapter: number) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const box = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!open) return;
+    const close = (event: PointerEvent) => {
+      if (!box.current?.contains(event.target as Node)) setOpen(false);
+    };
+    const escape = (event: KeyboardEvent) => event.key === "Escape" && setOpen(false);
+    window.addEventListener("pointerdown", close);
+    window.addEventListener("keydown", escape);
+    return () => {
+      window.removeEventListener("pointerdown", close);
+      window.removeEventListener("keydown", escape);
+    };
+  }, [open]);
+  const entries = outline.contents.length
+    ? outline.contents
+    : outline.titles.map((title, i) => ({ title, chapter: i + 1, depth: 0 }));
+  const name = (n: number) =>
+    outline.titles[n - 1] || t("Chapter {number}", { number: n });
+  // The entry of the chapter shown: the last one that opens it or a chapter before it.
+  const current = entries.reduce<number>(
+    (found, entry, i) => (entry.chapter <= chapter ? i : found),
+    -1,
+  );
+  return (
+    <div ref={box} className="relative min-w-0 flex-none">
+      <button
+        type="button"
+        className={cn("contents-button", open && "bg-muted")}
+        aria-expanded={open}
+        aria-haspopup="menu"
+        title={t("Contents")}
+        onClick={() => setOpen((was) => !was)}
+      >
+        <ListTree className="size-3.5 flex-none" aria-hidden />
+        <span className="truncate">{name(chapter)}</span>
+        <ChevronDown className="size-3 flex-none" aria-hidden />
+      </button>
+      {open && (
+        <div className="contents-menu" role="menu" aria-label={t("Contents")}>
+          <p className="contents-heading">{t("Contents")}</p>
+          {entries.map((entry, i) => (
+            <button
+              key={i}
+              type="button"
+              role="menuitem"
+              className={cn(i === current && "current")}
+              style={{ paddingLeft: `${8 + entry.depth * 14}px` }}
+              onClick={() => {
+                setOpen(false);
+                onChapter(entry.chapter);
+              }}
+            >
+              <span className="truncate">{entry.title || name(entry.chapter)}</span>
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/**
+ * Above a scanned PDF: the offer to recognize its text, the progress while
+ * it runs, and once done, a word that recognized text has mistakes.
+ */
+function ScanBar({
+  doc,
+  bytes,
+  onSave,
+}: {
+  doc: PdfDocument;
+  bytes: ArrayBuffer;
+  onSave: (bytes: Uint8Array) => Promise<void>;
+}) {
+  const [found, setFound] = useState<{ doc: PdfDocument; state: ScanState } | null>(
+    null,
+  );
+  const state = found?.doc === doc ? found.state : null;
+  const [languages, setLanguages] = useState(
+    () => loadTextLanguages() ?? defaultTextLanguages(),
+  );
+  const [progress, setProgress] = useState<Recognizing | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [choosing, setChoosing] = useState(false);
+  const stop = useRef<AbortController | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    void scanStateOf(doc)
+      .then((next) => !cancelled && setFound({ doc, state: next }))
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [doc]);
+  useEffect(() => () => stop.current?.abort(), []);
+
+  const run = async (again: boolean) => {
+    const controller = new AbortController();
+    stop.current = controller;
+    setError(null);
+    setChoosing(false);
+    saveTextLanguages(languages);
+    setProgress({ done: 0, total: 0 });
+    try {
+      const out = await recognizeText(doc, bytes, {
+        languages,
+        again,
+        date: new Date().toISOString().slice(0, 10),
+        signal: controller.signal,
+        onProgress: setProgress,
+      });
+      if (out) await onSave(out);
+      else if (!controller.signal.aborted)
+        setError(t("Binder found no pages without text to recognize."));
+    } catch (problem) {
+      setError(
+        problem instanceof RecognizeError
+          ? problem.message
+          : problem instanceof Error && /encrypt/i.test(problem.message)
+            ? t("This PDF is protected, so Binder can't add text to it.")
+            : t("The text wasn't recognized. {error}", {
+                error: problem instanceof Error ? problem.message : String(problem),
+              }),
+      );
+    } finally {
+      if (stop.current === controller) stop.current = null;
+      setProgress(null);
+    }
+  };
+
+  if (!state || state.kind === "text") return null;
+  const picker = (
+    <label className="scan-language">
+      {t("Language:")}
+      <select value={languages} onChange={(event) => setLanguages(event.target.value)}>
+        {[...new Set([defaultTextLanguages(), languages])].map((option) => (
+          <option key={option} value={option}>
+            {textLanguagesLabel(option)}
+          </option>
+        ))}
+        {TEXT_LANGUAGES.filter(
+          (l) => l.code !== languages && l.code !== defaultTextLanguages(),
+        ).map((l) => (
+          <option key={l.code} value={l.code}>
+            {t(l.name)}
+          </option>
+        ))}
+      </select>
+    </label>
+  );
+  return (
+    <div className="scan-bar" role="status">
+      <ScanText className="size-3.5 flex-none text-muted-foreground" aria-hidden />
+      {progress ? (
+        <>
+          <span className="flex-none">
+            {progress.total
+              ? t("Recognizing the text… page {done} of {total}", {
+                  done: Math.min(progress.done + 1, progress.total),
+                  total: progress.total,
+                })
+              : t("Getting ready to recognize the text…")}
+          </span>
+          <span className="scan-progress" aria-hidden>
+            <span
+              style={{
+                width: `${progress.total ? (100 * progress.done) / progress.total : 0}%`,
+              }}
+            />
+          </span>
+          <span className="min-w-0 flex-1 truncate text-muted-foreground">
+            {t("On this device. You can keep reading.")}
+          </span>
+          <button
+            type="button"
+            className="scan-button"
+            onClick={() => stop.current?.abort()}
+          >
+            {t("Stop")}
+          </button>
+        </>
+      ) : state.kind === "scan" || choosing ? (
+        <>
+          <span className="min-w-0 flex-1">
+            {error ??
+              (state.kind === "scan"
+                ? t(
+                    "This PDF is a scan: its pages are pictures, so their text can't be found or highlighted yet.",
+                  )
+                : t("Recognize the text again, in another language if it needs one."))}
+          </span>
+          {picker}
+          <button
+            type="button"
+            className={READ_BUTTON}
+            onClick={() => void run(state.kind === "recognized")}
+          >
+            {t("Recognize the text")}
+          </button>
+          {choosing && (
+            <button
+              type="button"
+              className="scan-button"
+              onClick={() => setChoosing(false)}
+            >
+              {t("Cancel")}
+            </button>
+          )}
+        </>
+      ) : (
+        <>
+          <span className="min-w-0 flex-1 text-muted-foreground">
+            {error ??
+              t(
+                "Text recognized from the scan. Check a quote against the page before you use it.",
+              )}
+          </span>
+          <button
+            type="button"
+            className={LINK_BUTTON}
+            onClick={() => setChoosing(true)}
+          >
+            {t("Recognize again…")}
+          </button>
+        </>
+      )}
+    </div>
+  );
+}
+
+const READ_BUTTON =
+  "inline-flex h-6 flex-none items-center gap-1.5 rounded-[5px] border border-primary-edge bg-primary-fill px-2.5 text-xs font-medium text-primary-foreground hover:bg-primary-fill/85";
+const LINK_BUTTON =
+  "inline-flex h-6 flex-none items-center gap-1 rounded-[5px] px-1.5 text-xs font-medium text-tint-foreground hover:bg-tint-soft";
+
 /** A highlight the assistant proposes: keep it, or dismiss it. */
 function ProposedCard({
   highlight,
+  unit,
   onOpen,
   onKeep,
   onDismiss,
 }: {
   highlight: Highlight;
+  unit: Unit;
   onOpen: () => void;
   onKeep: () => void;
   onDismiss: () => void;
@@ -476,7 +932,9 @@ function ProposedCard({
       <div className="flex items-center gap-1 text-2xs text-muted-foreground">
         <span className={cn("category-dot", `dot-${highlight.category}`)} />
         <span className="px-1">{categoryLabel(highlight.category)}</span>
-        {highlight.page && <span className="tabular-nums">p. {highlight.page}</span>}
+        {highlight.page && (
+          <span className="tabular-nums">{placeMark(unit, highlight.page)}</span>
+        )}
         <span className="flex-1" />
         <button
           type="button"
@@ -507,6 +965,7 @@ function ProposedCard({
 /** One highlight in the side panel: drag it into the notes, or add it there. */
 function HighlightCard({
   highlight,
+  unit,
   onOpen,
   onCategory,
   onRemove,
@@ -514,6 +973,7 @@ function HighlightCard({
   dragData,
 }: {
   highlight: Highlight;
+  unit: Unit;
   onOpen: () => void;
   onCategory: (category: Category) => void;
   onRemove: () => void;
@@ -546,7 +1006,9 @@ function HighlightCard({
             </option>
           ))}
         </select>
-        {highlight.page && <span className="tabular-nums">p. {highlight.page}</span>}
+        {highlight.page && (
+          <span className="tabular-nums">{placeMark(unit, highlight.page)}</span>
+        )}
         <span className="flex-1" />
         <button
           type="button"
@@ -595,6 +1057,8 @@ export interface ReaderProps {
   backLabel: string;
   /** The notes on the item, shown next to the source. */
   notes: React.ReactNode;
+  /** Saves the source with recognized text in it; without it, a scan is only read. */
+  onSaveFile?: (bytes: Uint8Array) => Promise<void>;
 }
 
 /** A source to read and highlight, with the highlights and notes next to it. */
@@ -646,6 +1110,11 @@ export function Reader(props: ReaderProps) {
   const scroller = useRef<HTMLDivElement>(null);
   const findInput = useRef<HTMLInputElement>(null);
   const pdf = isPdf(file);
+  const epub = isEpub(file);
+  const paged = isPaged(file);
+  const unit = unitOf(file);
+  const [outline, setOutline] = useState<BookOutline | null>(null);
+  const [pdfDoc, setPdfDoc] = useState<PdfDocument | null>(null);
 
   useEffect(() => {
     let current = true;
@@ -664,6 +1133,10 @@ export function Reader(props: ReaderProps) {
     if (!query.trim() || texts || !data) return;
     let cancelled = false;
     void (async () => {
+      if (epub) {
+        if (!cancelled) setTexts(chapterTexts(openEpub(data)));
+        return;
+      }
       if (!pdf) {
         if (!cancelled) setTexts(htmlPages(new TextDecoder().decode(data)));
         return;
@@ -678,14 +1151,14 @@ export function Reader(props: ReaderProps) {
     return () => {
       cancelled = true;
     };
-  }, [query, texts, data, pdf]);
+  }, [query, texts, data, pdf, epub]);
 
   const matches = useMemo(() => {
     if (!texts || !query.trim()) return [];
     return texts.flatMap((text, i) =>
-      matchesIn(text, query).map((_, nth) => ({ page: pdf ? i + 1 : null, nth })),
+      matchesIn(text, query).map((_, nth) => ({ page: paged ? i + 1 : null, nth })),
     );
-  }, [texts, query, pdf]);
+  }, [texts, query, paged]);
   const shownMatch = matches.length ? Math.min(current, matches.length - 1) : -1;
   const finding = useMemo<Finding | null>(
     () =>
@@ -769,7 +1242,7 @@ export function Reader(props: ReaderProps) {
       x: Math.min(Math.max(rect.left + rect.width / 2, 140), window.innerWidth - 140),
       y: rect.top,
       text,
-      page: pdf && shell ? Number(shell.dataset.page) : null,
+      page: paged && shell ? Number(shell.dataset.page) : null,
     });
   };
 
@@ -868,9 +1341,18 @@ export function Reader(props: ReaderProps) {
             </>
           )}
         </div>
-        {pdf && pages > 0 && (
+        {epub && outline && (
+          <ContentsMenu
+            outline={outline}
+            chapter={page}
+            onChapter={(chapter) => go({ page: chapter, highlight: null, find: false })}
+          />
+        )}
+        {paged && pages > 0 && (
           <span className="flex-none tabular-nums" aria-live="polite">
-            {t("p. {page} of {pages}", { page, pages })}
+            {epub
+              ? t("ch. {chapter} of {chapters}", { chapter: page, chapters: pages })
+              : t("p. {page} of {pages}", { page, pages })}
           </span>
         )}
         <div className="flex flex-none items-center">
@@ -912,6 +1394,17 @@ export function Reader(props: ReaderProps) {
           onKeyUp={(event) => event.shiftKey && offer()}
           onScroll={() => menu && setMenu(null)}
         >
+          {pdf && pdfDoc && data && props.onSaveFile && !problem && (
+            <ScanBar
+              doc={pdfDoc}
+              bytes={data}
+              onSave={async (next) => {
+                await props.onSaveFile!(next);
+                setTexts(null);
+                setBytes({ file, data: next.buffer as ArrayBuffer });
+              }}
+            />
+          )}
           {problem ? (
             <p className="p-6 text-[13px] text-muted-foreground">{problem}</p>
           ) : data === undefined ? (
@@ -933,6 +1426,20 @@ export function Reader(props: ReaderProps) {
               onPage={setPage}
               onPages={setPages}
               onError={setProblem}
+              onDocument={setPdfDoc}
+            />
+          ) : epub ? (
+            <EpubSource
+              bytes={data}
+              zoom={zoom}
+              highlights={marks}
+              finding={finding}
+              request={request}
+              scroller={scroller}
+              onPage={setPage}
+              onPages={setPages}
+              onError={setProblem}
+              onOutline={setOutline}
             />
           ) : (
             <HtmlSource
@@ -964,6 +1471,7 @@ export function Reader(props: ReaderProps) {
                   <HighlightCard
                     key={h.id}
                     highlight={h}
+                    unit={unit}
                     onOpen={() => go({ page: h.page, highlight: h.id, find: false })}
                     onCategory={(category) => props.onChangeHighlight(h.id, category)}
                     onRemove={() => props.onRemoveHighlight(h.id)}
@@ -1001,6 +1509,7 @@ export function Reader(props: ReaderProps) {
                     <ProposedCard
                       key={h.id}
                       highlight={h}
+                      unit={unit}
                       onOpen={() =>
                         go({ page: h.page, highlight: PROPOSED + h.id, find: false })
                       }

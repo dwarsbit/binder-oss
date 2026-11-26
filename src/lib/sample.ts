@@ -96,8 +96,9 @@ const ITEMS: Array<NewItem & { path: string; added: string }> = [
     year: "2018",
     publisher: "Amsterdam University Press",
     isbn: "9789462981234",
+    file: "The reading student.epub",
     tags: ["first year"],
-    markdown: `Chapter 3 is the one on course texts. De Boer separates **reading to know** from **reading to pass**, and says first-year students mostly do the second.
+    markdown: `“Reading for a course” is the chapter on course texts. De Boer separates **reading to know** from **reading to pass**, and says first-year students mostly do the second.
 
 - Ask whether the survey in Okafor and Brandt can tell the two apart.
 - Her numbers are from 2015, before the laptop rule.
@@ -157,7 +158,7 @@ const ITEMS: Array<NewItem & { path: string; added: string }> = [
     kind: "note",
     markdown: `- Does an e-reader count as a screen?
 - Can I use the library survey, or is it too small?
-- See [[The reading student]], chapter 3.
+- See [[The reading student]], the chapter “Reading for a course”.
 
 > “We did not ask about e-readers, which few students in our sample owned.” [Okafor and Brandt 2021, p. 3](Screen%20or%20paper%20how%20first-year%20students%20read%20course%20texts.pdf#page=3)
 `,
@@ -229,6 +230,19 @@ export const SAMPLE_BINDER: Project = {
       ITEMS.map(({ path, added, ...item }) => [path, newItemSource(item, added)]),
     ),
     "items/Where students read library survey 2025.assistant.md": SURVEY_NOTE,
+    "items/The reading student.highlights.md": writeHighlights(
+      "items/The reading student.md",
+      [
+        {
+          id: "r2d7kc",
+          category: "claim",
+          page: 4,
+          text: "Reading for a course is reading to be ready, not reading to understand.",
+        },
+      ],
+      undefined,
+      "chapter",
+    ),
     "items/Screen or paper how first-year students read course texts.highlights.md":
       writeHighlights(
         "items/Screen or paper how first-year students read course texts.md",

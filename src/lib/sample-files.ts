@@ -1,6 +1,8 @@
+import { sampleBookFiles, zipEpub } from "./sample-book";
+
 /**
- * The files of the demo binder: an article as a PDF and a kept web page.
- * The article and the page are made up, as the rest of the demo.
+ * The files of the demo binder: an article as a PDF, a kept web page and
+ * a book as an EPUB. They are made up, as the rest of the demo.
  */
 
 const ARTICLE_PDF =
@@ -39,11 +41,23 @@ const LIBRARY_PAGE = `<!doctype html>
 const dataUrl = (type: string, text: string) =>
   `data:${type};base64,${btoa(String.fromCharCode(...new TextEncoder().encode(text)))}`;
 
+/** Bytes as a data: URL, in pieces small enough for String.fromCharCode. */
+const bytesUrl = (type: string, bytes: Uint8Array) => {
+  let binary = "";
+  for (let i = 0; i < bytes.length; i += 0x8000)
+    binary += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
+  return `data:${type};base64,${btoa(binary)}`;
+};
+
 /** The demo's files, by path, as the browser keeps them. */
 export const SAMPLE_FILES: Record<string, string> = {
   "items/Screen or paper how first-year students read course texts.pdf": `data:application/pdf;base64,${ARTICLE_PDF}`,
   "items/Where students read library survey 2025.html": dataUrl(
     "text/html",
     LIBRARY_PAGE,
+  ),
+  "items/The reading student.epub": bytesUrl(
+    "application/epub+zip",
+    zipEpub(sampleBookFiles()),
   ),
 };

@@ -25,20 +25,24 @@
     "prepare": "pnpm --filter @scholarkit/contracts --filter @scholarkit/i18n --filter @scholarkit/monitoring build"
   },
   "dependencies": {
+    "@scholarkit/account-menu": "workspace:*",
     "@scholarkit/contracts": "workspace:*",
     "@scholarkit/editor": "workspace:*",
     "@scholarkit/i18n": "workspace:*",
     "@scholarkit/monitoring": "workspace:*",
-    "@scholarkit/account-menu": "workspace:*",
     "@scholarkit/updates": "workspace:*",
     "@tauri-apps/api": "^2.12.4",
     "@tauri-apps/plugin-dialog": "^2.8.4",
     "@tiptap/core": "^3.33.1",
     "@tiptap/react": "^3.33.0",
+    "fflate": "catalog:",
     "lucide-react": "^1.71.0",
+    "pdf-lib": "1.17.1",
     "pdfjs-dist": "^6.5.438",
     "react": "^19.3.1",
     "react-dom": "^19.3.1",
+    "tesseract.js": "7.0.0",
+    "tesseract.js-core": "7.0.0",
     "yjs": "13.6.33"
   },
   "devDependencies": {

@@ -29,7 +29,7 @@ export const categoryLabel = (category: Category) => t(fileLabel(category));
 export interface Highlight {
   id: string;
   category: Category;
-  /** The page in a PDF, from 1; null on a web page. */
+  /** The page in a PDF or the chapter in an EPUB, from 1; null on a web page. */
   page: number | null;
   /** The highlighted text, on one line. */
   text: string;
@@ -43,7 +43,16 @@ export const isHighlightsPath = (path: string) => /\.highlights\.md$/i.test(path
 export const itemPathOfHighlights = (path: string) =>
   path.replace(/\.highlights\.md$/i, ".md");
 
-const LINE = /^[-*] \*\*([A-Za-z]+)\*\*(?: · p\. (\d+))? · “(.*)” \^([A-Za-z0-9]+)\s*$/;
+const LINE =
+  /^[-*] \*\*([A-Za-z]+)\*\*(?: · (?:p|ch)\. (\d+))? · “(.*)” \^([A-Za-z0-9]+)\s*$/;
+
+/** How a source counts its places: pages in a PDF, chapters in an EPUB. */
+export type Unit = "page" | "chapter";
+export const unitOf = (file: string | null | undefined): Unit =>
+  file && /\.epub$/i.test(file) ? "chapter" : "page";
+/** A place as the files and quotes write it, in English: “p. 4”, “ch. 3”. */
+export const placeMark = (unit: Unit, n: number) =>
+  `${unit === "chapter" ? "ch." : "p."} ${n}`;
 
 /** One line of text: what a highlight keeps of a selection. */
 export const oneLine = (text: string) => text.replace(/\s+/g, " ").trim();
@@ -82,21 +91,22 @@ export function readHighlightLines(markdown: string): {
 }
 
 /** A highlight as a line of its file. */
-export const highlightLine = (h: Highlight) =>
-  `- **${fileLabel(h.category)}**${h.page ? ` · p. ${h.page}` : ""} · “${oneLine(h.text)}” ^${h.id}`;
+export const highlightLine = (h: Highlight, unit: Unit = "page") =>
+  `- **${fileLabel(h.category)}**${h.page ? ` · ${placeMark(unit, h.page)}` : ""} · “${oneLine(h.text)}” ^${h.id}`;
 
 /** The highlights file for an item, keeping the lines Binder doesn't read. */
 export function writeHighlights(
   itemPath: string,
   highlights: Highlight[],
   previous?: string,
+  unit: Unit = "page",
 ): string {
   const before = previous ? readPage(previous) : null;
   const properties = parseProperties(before?.properties ?? "").filter(
     (p) => p.kind === "raw" || p.key !== "highlights-of",
   );
   const other = readHighlights(previous).other;
-  const lines = highlights.map(highlightLine);
+  const lines = highlights.map((h) => highlightLine(h, unit));
   const body = [...lines, ...other];
   return writePage({
     title: "",
@@ -135,7 +145,7 @@ const linkPath = (href: string) => href.replace(/\(/g, "%28").replace(/\)/g, "%2
 /** A link from a page in `fromDir` to a place in a source file. */
 export function placeHref(fromDir: string, place: Place): string {
   const params = [
-    place.page ? `page=${place.page}` : "",
+    place.page ? `${unitOf(place.file)}=${place.page}` : "",
     place.highlight ? `highlight=${place.highlight}` : "",
     place.text ? `text=${encodeText(place.text)}` : "",
   ].filter(Boolean);
@@ -173,7 +183,7 @@ export function placeOfHref(fromDir: string, href: string): Place | null {
   const file = resolveHref(fromDir, hash < 0 ? href : href.slice(0, hash));
   if (!file || /\.md$/i.test(file)) return null;
   const params = new URLSearchParams(hash < 0 ? "" : href.slice(hash + 1));
-  const page = Number(params.get("page"));
+  const page = Number(params.get(unitOf(file)) ?? params.get("page"));
   return {
     file,
     page: Number.isInteger(page) && page > 0 ? page : null,

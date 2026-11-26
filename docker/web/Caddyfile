@@ -13,6 +13,14 @@
 	# account, so text from a binder must never run as script here.
 	header Content-Security-Policy "script-src 'self' 'wasm-unsafe-eval'; worker-src 'self' blob:; object-src 'none'; base-uri 'self'; frame-ancestors 'self'"
 
+	# Tesseract's language files, for recognizing the text of scans. The desktop app and the
+	# demo fetch them from another origin.
+	handle /binder/tessdata/* {
+		header Access-Control-Allow-Origin "*"
+		header Cache-Control "public, max-age=2592000"
+		file_server
+	}
+
 	# Vite puts a content hash in these file names.
 	handle /binder/assets/* {
 		header Cache-Control "public, max-age=31536000, immutable"

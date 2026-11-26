@@ -11,6 +11,8 @@
 - In the browser, your binders are at `app.scholarkit.app/binder/projects`. Links and bookmarks to the old address keep working, and the Binder Clipper follows.
 - The menu under your avatar is the same in Binder, Polemic, Cursive and on your Scholarkit home page. It shows your plan, the storage you use, how much of today's cloud compile time you've used and your active review links, with **Upgrade to Plus** on Free and **Upgrade to Pro** on Plus. **Manage your account** is now **Manage account**.
 - Starting a binder looks the same in Binder, Polemic and Cursive: one card with the name, your research question and **Create**. In the browser the page only makes binders; your binders are on your Scholarkit home page, where you can also rename and delete them. In the desktop app, your recent binders stay under the card.
+- Read e-books: an EPUB you add opens in the reader, one chapter at a time, with **Contents** to move between chapters. Highlight, find and quote as in a PDF; a highlight names its chapter, as `ch. 4`. A book from an EPUB gets its title, authors, year, publisher and ISBN from the book. Books locked with DRM can't be opened. See [the binder format](docs/format.md).
+- Make a scanned PDF searchable: when a PDF's pages are pictures, the reader offers **Recognize the text**. Binder recognizes the text on your computer, in the language you pick, and writes it into the PDF, so you can find, select and highlight its words, in Binder and in other apps.
 
 ## 0.4.0 (2026-11-22)
 

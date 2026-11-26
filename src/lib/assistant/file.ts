@@ -6,7 +6,12 @@ import {
 } from "@scholarkit/editor/lib/properties";
 import { baseName } from "@scholarkit/editor/lib/paths";
 import { KINDS, type Kind } from "../binder";
-import { highlightLine, readHighlightLines, type Highlight } from "../highlights";
+import {
+  highlightLine,
+  readHighlightLines,
+  type Highlight,
+  type Unit,
+} from "../highlights";
 import { msg } from "@scholarkit/i18n";
 
 /**
@@ -205,8 +210,16 @@ export function withPart(
 }
 
 /** The note with proposed highlights, as their lines. */
-export const withProposedHighlights = (note: AssistantNote, highlights: Highlight[]) =>
-  withPart(note, "highlights", highlights.map(highlightLine).join("\n"));
+export const withProposedHighlights = (
+  note: AssistantNote,
+  highlights: Highlight[],
+  unit: Unit = "page",
+) =>
+  withPart(
+    note,
+    "highlights",
+    highlights.map((h) => highlightLine(h, unit)).join("\n"),
+  );
 
 /** The proposal without the values the item has already. */
 export function newIn(

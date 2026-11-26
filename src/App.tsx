@@ -101,16 +101,19 @@ import {
   highlightsPathOf,
   newHighlightId,
   placeHref,
+  placeMark,
   placeOfHref,
   readHighlights,
   retargetFileLinks,
+  unitOf,
   writeHighlights,
   type Highlight,
 } from "@/lib/highlights";
 import { removeFrom, renameIn, type BinderStore } from "@/lib/store";
 import { applyChanges, type PageChange } from "@scholarkit/editor/lib/project-doc";
 import {
-  isPdf,
+  isEpub,
+  isPaged,
   isReadable,
   normalize,
   readText,
@@ -144,6 +147,7 @@ import { budgetFor, readWithAssistant } from "@/lib/assistant/reading";
 import { useAssistantRuns, type Start } from "@/lib/assistant/runs";
 import { completer } from "@/lib/assistant/transport";
 import { keepPage } from "@/lib/webpage";
+import { authorsOf, openEpub } from "@/lib/epub";
 import { clipHighlights, sameUrl, subscribeClips } from "@/lib/clipper";
 import type { ClipPayload } from "@scholarkit/contracts";
 import { t, tn } from "@scholarkit/i18n";
@@ -480,6 +484,7 @@ export default function App({
         path,
         readHighlights(next.pages[moved]).highlights,
         next.pages[moved],
+        unitOf(own.file),
       );
       next = { ...next, pages: { ...next.pages, [moved]: text } };
       void persist(store.writePage(moved, text));
@@ -605,6 +610,23 @@ export default function App({
     return path;
   };
 
+  /** What an EPUB says about itself, for its item; nothing when it can't be read. */
+  const bookOf = async (file: File): Promise<Partial<NewItem>> => {
+    try {
+      const book = openEpub(await file.arrayBuffer());
+      const found: Partial<NewItem> = {
+        authors: authorsOf(book),
+        year: book.year,
+        publisher: book.publisher,
+        isbn: book.isbn,
+      };
+      if (book.title) found.title = book.title;
+      return found;
+    } catch {
+      return {};
+    }
+  };
+
   /** Adds files as items in the inbox, each next to its own item. */
   const addFileItems = async (files: File[]) => {
     let first: string | null = null;
@@ -614,6 +636,7 @@ export default function App({
           {
             title: titleOfFile(file.name) || t("Untitled"),
             kind: kindOfFile(file.name),
+            ...(isEpub(file.name) ? await bookOf(file) : {}),
           },
           { data: file, extension: extensionOf(file.name) },
         );
@@ -888,9 +911,17 @@ export default function App({
     if (!latest) return;
     const path = highlightsPathOf(itemPath);
     const before = latest.pages[path];
+    const file = latest.pages[itemPath]
+      ? readItem(itemPath, latest.pages[itemPath]).file
+      : null;
     writeSource(
       path,
-      writeHighlights(itemPath, change(readHighlights(before).highlights), before),
+      writeHighlights(
+        itemPath,
+        change(readHighlights(before).highlights),
+        before,
+        unitOf(file),
+      ),
     );
   };
 
@@ -899,7 +930,8 @@ export default function App({
     const label =
       [authorsShort(entry.authors) || entry.title, entry.year]
         .filter(Boolean)
-        .join(" ") + (highlight.page ? `, p. ${highlight.page}` : "");
+        .join(" ") +
+      (highlight.page ? `, ${placeMark(unitOf(entry.file), highlight.page)}` : "");
     const href = placeHref(parentOf(entry.path), {
       file: entry.file ?? "",
       page: highlight.page,
@@ -959,7 +991,8 @@ export default function App({
       item: entry,
       question: readBinderInfo(current).question,
       pages,
-      pdf: isPdf(file),
+      pdf: isPaged(file),
+      unit: unitOf(file),
       tags: tagCounts(itemsOf(current)).map((t) => t.tag),
       highlights: readHighlights(current.pages[highlightsPathOf(path)]).highlights,
       linkTo: ({ page, text }) =>
@@ -1095,6 +1128,7 @@ export default function App({
       withProposedHighlights(
         note,
         proposed.filter((h) => !keep.includes(h)),
+        unitOf(entry.file),
       ),
     );
   };
@@ -1104,6 +1138,7 @@ export default function App({
       withProposedHighlights(
         note,
         proposedHighlights(note).filter((h) => h.id !== id),
+        unitOf(entry.file),
       ),
     );
 
@@ -1384,13 +1419,16 @@ export default function App({
     for (const entry of items) {
       const text = entry.file ? textIndex?.[entry.file] : undefined;
       if (!text || !entry.file) continue;
-      const pdf = isPdf(entry.file);
+      const paged = isPaged(entry.file);
+      const epub = isEpub(entry.file);
       text.pages.forEach((words, at) => {
         if (!words.trim()) return;
         found[`${entry.path}#page=${at + 1}`] = writePage({
-          title: pdf
-            ? t("{title}, p. {page}", { title: entry.title, page: at + 1 })
-            : t("{title}, kept page", { title: entry.title }),
+          title: epub
+            ? t("{title}, ch. {chapter}", { title: entry.title, chapter: at + 1 })
+            : paged
+              ? t("{title}, p. {page}", { title: entry.title, page: at + 1 })
+              : t("{title}, kept page", { title: entry.title }),
           properties: "",
           markdown: `${normalize(words)}\n`,
         });
@@ -1451,6 +1489,21 @@ export default function App({
     [proposedSource],
   );
   const readBytes = useCallback((path: string) => store.readBytes(path), [store]);
+  /** Saves a PDF with the text recognized in it; its text is read again, for search and the assistant. */
+  const saveRecognized = async (file: string, bytes: Uint8Array) => {
+    if (!file) return;
+    await store.writeFile(
+      file,
+      new Blob([bytes as BlobPart], { type: "application/pdf" }),
+    );
+    const known = indexed.current;
+    if (known?.[file]) {
+      const { [file]: _gone, ...rest } = known;
+      void _gone;
+      indexed.current = rest;
+    }
+    setFilesVersion((n) => n + 1);
+  };
 
   if (!project) {
     return (
@@ -1634,6 +1687,7 @@ export default function App({
       onKeepProposed={(ids) => keepProposed(readingItem, ids)}
       onDismissProposed={(id) => dismissProposed(readingItem, id)}
       quoteOf={(highlight) => quoteOf(readingItem, highlight)}
+      onSaveFile={(bytes) => saveRecognized(readingItem.file ?? "", bytes)}
       onAddToNotes={(highlight) => {
         const editor = notesEditor.current;
         if (!editor) return;
@@ -1963,7 +2017,7 @@ export default function App({
               const page = Number(inFile[2]);
               const found = items.find((entry) => entry.path === inFile[1]);
               readSource(inFile[1], {
-                page: found?.file && isPdf(found.file) ? page : null,
+                page: found?.file && isPaged(found.file) ? page : null,
                 highlight: null,
                 find: query,
                 passage: null,

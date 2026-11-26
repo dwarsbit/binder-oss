@@ -105,7 +105,7 @@ in the fields under its title.
 
 ## Read and highlight
 
-An item with a PDF or a kept web page has **Read** at the top. The source
+An item with a PDF, an e-book or a kept web page has **Read** at the top. The source
 opens with its highlights and your notes next to it. Zoom with the buttons
 at the top, and find text in the source with Cmd/Ctrl + F.
 
@@ -121,6 +121,20 @@ The highlights are listed next to the source; click one to go back to it.
 Drag a highlight into your notes, or choose **Add to notes**: it becomes
 a quote with a link to its page. The link opens the source at that page,
 also from any other note.
+
+An e-book (EPUB) reads one chapter at a time. **Contents** at the top
+lists the chapters, and the end of each chapter leads to the next. A
+highlight names its chapter, as `ch. 4`, where a PDF names its page. A
+book locked with DRM can't be opened: Binder says so.
+
+A scanned PDF has pictures of its pages and no text, so you can't find,
+select or highlight its words. Binder sees this and offers **Recognize
+the text** above the pages. Pick the language of the text first. Binder
+recognizes the text on your computer, page by page, while you keep
+reading, and writes it into the PDF, so other apps find it too. The first
+time, Binder downloads the files for that language. Recognized text can
+have mistakes: check a quote against the page before you use it. If a
+language was wrong, choose **Recognize again…**.
 
 A web page you added before Binder kept pages has **Keep the page text**
 under its details. Binder keeps the page's article, without the site's

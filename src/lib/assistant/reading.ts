@@ -2,8 +2,10 @@ import { KINDS, type Item, type Kind } from "../binder";
 import {
   CATEGORIES,
   newHighlightId,
+  placeMark,
   type Category,
   type Highlight,
+  type Unit,
 } from "../highlights";
 import { normalize } from "../text";
 import {
@@ -35,9 +37,12 @@ export interface ReadingInput {
   item: Item;
   /** The binder's research question; may be empty. */
   question: string;
-  /** The source's text, by page. */
+  /** The source's text, by page; an EPUB's by chapter. */
   pages: string[];
+  /** Whether its places are numbered: a PDF's pages or an EPUB's chapters, not a web page. */
   pdf: boolean;
+  /** How it counts them; pages when not given. */
+  unit?: Unit;
   /** Tags the binder uses, for the proposal to prefer. */
   tags: string[];
   /** Highlights the source has already, not to propose again. */
@@ -158,12 +163,12 @@ export function proposalOf(value: unknown, item: Item, tags: string[]): Proposal
 /** Markdown a sentence of the model's can't break: no links, emphasis or HTML of its own. */
 const escapeMarkdown = (text: string) =>
   normalize(text)
-    .replace(/\s*[([](?:p\.|passage|pp\.)?\s*\d+[)\]]\s*$/i, "")
+    .replace(/\s*[([](?:p\.|passage|pp\.|ch\.)?\s*\d+[)\]]\s*$/i, "")
     .replace(/([\\[\]*_`<>])/g, "\\$1");
 
-const passageList = (passages: Passage[]) =>
+const passageList = (passages: Passage[], unit: Unit = "page") =>
   passages
-    .map((p) => `[${p.n}]${p.page ? ` (p. ${p.page})` : ""} ${p.text}`)
+    .map((p) => `[${p.n}]${p.page ? ` (${placeMark(unit, p.page)})` : ""} ${p.text}`)
     .join("\n\n");
 
 function aboutItem(input: ReadingInput): string {
@@ -296,7 +301,7 @@ export async function readWithAssistant(input: ReadingInput): Promise<Reading> {
     input.progress?.(t("Reading the source"));
     whole = await ask(
       input,
-      `${about}\n\n${wholeTask(outline)}\n\nThe source:\n\n${passageList(passages)}`,
+      `${about}\n\n${wholeTask(outline)}\n\nThe source:\n\n${passageList(passages, input.unit)}`,
     );
     outlineLines = statementsOf(whole.outline, "line");
     highlights = highlightsOf(whole.highlights);
@@ -308,7 +313,7 @@ export async function readWithAssistant(input: ReadingInput): Promise<Reading> {
       );
       const part = await ask(
         input,
-        `${about}\n\n${PART_TASK}\n\nPart ${i + 1} of ${runs.length} of the source:\n\n${passageList(run)}`,
+        `${about}\n\n${PART_TASK}\n\nPart ${i + 1} of ${runs.length} of the source:\n\n${passageList(run, input.unit)}`,
       );
       outlineLines.push(...statementsOf(part.outline, "line"));
       highlights.push(...highlightsOf(part.highlights).slice(0, 4));
@@ -336,6 +341,7 @@ export async function readWithAssistant(input: ReadingInput): Promise<Reading> {
       input,
       `${about}\n\n${closingTask()}\n\nYour points:\n${notes || "none"}\n\nPassages:\n\n${passageList(
         [...chosen.values()].sort((a, b) => a.n - b.n),
+        input.unit,
       )}`,
     );
   }
@@ -348,7 +354,7 @@ export async function readWithAssistant(input: ReadingInput): Promise<Reading> {
       unchecked++;
       return null;
     }
-    const label = found.page ? `p. ${found.page}` : "passage";
+    const label = found.page ? placeMark(input.unit ?? "page", found.page) : "passage";
     return {
       passage: found,
       link: `[${label}](${input.linkTo({ page: found.page, text: quoteWords(s.quote) })})`,
@@ -407,7 +413,7 @@ export async function readWithAssistant(input: ReadingInput): Promise<Reading> {
     lines(statementsOf(whole.readClosely, "line"), false),
   );
   if (outline) note = withPart(note, "outline", lines(outlineLines, true));
-  note = withProposedHighlights(note, proposed.slice(0, 12));
+  note = withProposedHighlights(note, proposed.slice(0, 12), input.unit);
   return { note, unchecked };
 }
 

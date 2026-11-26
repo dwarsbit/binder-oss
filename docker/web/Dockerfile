@@ -39,7 +39,22 @@ RUN pnpm --filter @scholarkit/contracts build
 RUN --mount=type=secret,id=sentry_auth_token,env=SENTRY_AUTH_TOKEN \
     pnpm --filter @scholarkit/binder build:web
 
+# Tesseract's language files, for recognizing the text of scanned PDFs (src/lib/ocr.ts): the
+# "fast" models, from a fixed commit, checked against tessdata.sha256. The desktop app fetches
+# them from here too.
+FROM alpine:3.22 AS tessdata
+ARG TESSDATA_COMMIT=87416418657359cb625c412a48b6e1d6d41c29bd
+WORKDIR /tessdata
+COPY apps/binder/docker/web/tessdata.sha256 ./
+RUN apk add --no-cache curl \
+ && for file in $(awk '{ print $2 }' tessdata.sha256); do \
+      curl -fsSL -o "$file" "https://raw.githubusercontent.com/tesseract-ocr/tessdata_fast/$TESSDATA_COMMIT/$file"; \
+    done \
+ && sha256sum -c tessdata.sha256 \
+ && rm tessdata.sha256
+
 FROM caddy:2-alpine
 COPY apps/binder/docker/web/Caddyfile /etc/caddy/Caddyfile
 COPY --from=build /repo/apps/binder/dist-web /srv/binder
+COPY --from=tessdata /tessdata /srv/binder/tessdata
 EXPOSE 80

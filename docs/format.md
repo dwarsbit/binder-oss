@@ -186,6 +186,33 @@ file: Where students read.html
 - When the link leads to a PDF, the PDF is saved instead, as the
   item's file.
 
+## An e-book
+
+An item's file can be an EPUB, as a publisher sells it, without DRM. Binder
+reads it as it is and never changes it. It shows one chapter at a time: a
+chapter is a document in the book's reading order (its spine), counted
+from 1. Highlights and links name the chapter where a PDF names the page:
+see [Highlights](#highlights).
+
+A book added from an EPUB gets its title, authors, year, publisher and
+ISBN from the book's own information.
+
+## Text recognized in a scan
+
+A scanned PDF holds pictures of its pages and no text. Binder can
+recognize the text, on your computer, and writes it into the PDF as text
+that isn't drawn, over the words where they stand, as OCRmyPDF and
+Tesseract do. The pages look the same, and every app that reads the
+PDF's text, Binder included, finds and selects the words.
+
+- Each page's recognized text is a content stream of its own, marked
+  with `/BinderText true` in its dictionary. Recognizing again replaces
+  these streams and leaves the rest of the page alone.
+- The PDF's document information has a `BinderText` entry: the
+  languages the text was recognized in, as Tesseract names them (such as
+  `nld+eng`), a space, and the date, as `YYYY-MM-DD`.
+- Text in the PDF from anywhere else stays as it is.
+
 ## Highlights
 
 The highlights in a source are kept next to its item, in a Markdown file
@@ -209,8 +236,8 @@ Each highlight is one line of a list, in the order they were made:
 
 - its category in bold: **Claim**, **Definition**, **Method**,
   **Finding** or **Quote**, in English whatever the interface language;
-- `p. N`, the page in a PDF, counted from 1 as the file counts them;
-  a web page has none;
+- `p. N`, the page in a PDF, counted from 1 as the file counts them,
+  or `ch. N`, the chapter in an e-book; a web page has neither;
 - the highlighted text between “ and ”, on one line;
 - `^` and its id: letters and digits, unique in the file.
 
@@ -231,7 +258,9 @@ source, as a Markdown link to the file with the page after `#page=`:
 > [Okafor and Brandt 2021, p. 4](Screen%20or%20paper.pdf#page=4&highlight=k3x9q2)
 ```
 
-- `page` is the page, as in the highlights file. A web page has none.
+- `page` is the page, as in the highlights file. An e-book has
+  `chapter` instead, as in `#chapter=4&highlight=k3x9q2`, and a web
+  page neither.
 - `highlight` is the highlight's id. Binder opens the source there, and
   at the page when the highlight is gone.
 - Other apps open the file; most PDF readers go to the page.
@@ -304,8 +333,8 @@ are in English whatever the interface language.
   highlights file.
 
 Every sentence of the summary and every line of the other parts ends in
-a link to its passage: the source file with the page after `#page=` and
-the words it rests on after `text=`. Binder checks each passage
+a link to its passage: the source file with the page after `#page=` (the
+chapter after `#chapter=` in an e-book) and the words it rests on after `text=`. Binder checks each passage
 against the text of the source before it writes the file, and leaves out
 what has none. A link opens the source at the passage. Other apps open
 the file; most PDF readers go to the page.
@@ -321,9 +350,9 @@ with its item.
 it doesn't have to again. Deleting it loses nothing: Binder builds it
 again. Leave it out when you share or back up a binder.
 
-| File                | What it holds                                                                                            |
-| ------------------- | -------------------------------------------------------------------------------------------------------- |
-| `.binder/text.json` | The text of each PDF and kept web page, by page, for search. Each file's text is kept with its checksum. |
+| File                | What it holds                                                                                                                              |
+| ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
+| `.binder/text.json` | The text of each PDF, e-book and kept web page, by page (by chapter in an e-book), for search. Each file's text is kept with its checksum. |
 
 The assistant finds passages in this text: Binder cuts each page into
 passages of a few sentences and looks them up on your computer, so it

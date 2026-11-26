@@ -50,3 +50,8 @@ export const saveSidebarWidth = (width: number) =>
 export const loadExportFormat = () => recall("binder.export-format");
 export const saveExportFormat = (format: string) =>
   remember("binder.export-format", format);
+
+/** The languages text was last recognized in, as Tesseract names them: "nld+eng". */
+export const loadTextLanguages = () => recall("binder.text-languages");
+export const saveTextLanguages = (languages: string) =>
+  remember("binder.text-languages", languages);

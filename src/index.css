@@ -1067,3 +1067,153 @@ select.prop-input {
   color: var(--muted-foreground);
   font-size: 12px;
 }
+
+/* An EPUB: one chapter at a time, in the reader's type. */
+.epub-page .html-article img {
+  max-width: 100%;
+  height: auto;
+  margin: 0.5em auto;
+}
+.epub-turn {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-top: 2.5em;
+  border-top: 1px solid var(--border);
+  padding-top: 12px;
+  font-size: 13px;
+}
+.epub-turn button {
+  display: inline-flex;
+  min-width: 0;
+  height: 28px;
+  align-items: center;
+  gap: 4px;
+  border-radius: 5px;
+  padding: 0 6px;
+  color: var(--tint-foreground);
+  font-weight: 500;
+}
+.epub-turn button:hover {
+  background: var(--tint-soft);
+}
+.contents-button {
+  display: inline-flex;
+  max-width: 220px;
+  height: 24px;
+  align-items: center;
+  gap: 6px;
+  border-radius: 5px;
+  padding: 0 6px;
+  color: var(--foreground);
+}
+.contents-button:hover {
+  background: var(--muted);
+}
+.contents-menu {
+  position: absolute;
+  top: calc(100% + 4px);
+  right: 0;
+  z-index: 40;
+  display: flex;
+  max-height: min(420px, 70vh);
+  width: 280px;
+  flex-direction: column;
+  overflow-y: auto;
+  border-radius: 8px;
+  background: var(--popover, var(--card));
+  padding: 4px;
+  box-shadow:
+    0 8px 24px oklch(0 0 0 / 12%),
+    0 0 0 1px var(--border);
+  font-size: 13px;
+}
+.contents-heading {
+  padding: 4px 8px;
+  font-size: 11px;
+  color: var(--muted-foreground);
+}
+.contents-menu button {
+  display: flex;
+  min-height: 28px;
+  flex: none;
+  align-items: center;
+  border-radius: 5px;
+  padding-right: 8px;
+  text-align: left;
+  color: var(--foreground);
+}
+.contents-menu button:hover {
+  background: var(--muted);
+}
+.contents-menu button.current {
+  background: var(--tint-soft);
+  color: var(--tint-foreground);
+  font-weight: 500;
+}
+
+/* A scanned PDF: the offer to recognize its text, and the progress. */
+.scan-bar {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  display: flex;
+  min-height: 40px;
+  align-items: center;
+  gap: 10px;
+  border-bottom: 1px solid var(--border);
+  background: var(--background);
+  padding: 6px 12px;
+  font-size: 13px;
+}
+.scan-progress {
+  height: 4px;
+  min-width: 60px;
+  max-width: 200px;
+  flex: 1;
+  overflow: hidden;
+  border-radius: 2px;
+  background: var(--muted);
+}
+.scan-progress > span {
+  display: block;
+  height: 100%;
+  background: var(--tint);
+  transition: width 200ms;
+}
+.scan-language {
+  display: inline-flex;
+  height: 24px;
+  flex: none;
+  align-items: center;
+  gap: 4px;
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  padding: 0 4px 0 8px;
+  font-size: 12px;
+  color: var(--muted-foreground);
+}
+.scan-language select {
+  background: transparent;
+  color: var(--foreground);
+  outline: none;
+}
+.scan-button {
+  height: 24px;
+  flex: none;
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  background: var(--background);
+  padding: 0 8px;
+  font-size: 12px;
+}
+.scan-button:hover {
+  background: var(--muted);
+}
+@media (max-width: 640px) {
+  .scan-bar {
+    flex-wrap: wrap;
+  }
+}
