@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { cn } from "@scholarkit/editor/lib/cn";
+import { Select } from "@scholarkit/editor/components/Select";
 import { openExternal } from "@scholarkit/editor/lib/platform";
 import { boxesOf, rangeOf, textMap } from "@/lib/dom-text";
 import {
@@ -810,23 +811,23 @@ function ScanBar({
 
   if (!state || state.kind === "text") return null;
   const picker = (
-    <label className="scan-language">
+    <span className="scan-language">
       {t("Language:")}
-      <select value={languages} onChange={(event) => setLanguages(event.target.value)}>
-        {[...new Set([defaultTextLanguages(), languages])].map((option) => (
-          <option key={option} value={option}>
-            {textLanguagesLabel(option)}
-          </option>
-        ))}
-        {TEXT_LANGUAGES.filter(
-          (l) => l.code !== languages && l.code !== defaultTextLanguages(),
-        ).map((l) => (
-          <option key={l.code} value={l.code}>
-            {t(l.name)}
-          </option>
-        ))}
-      </select>
-    </label>
+      <Select
+        aria-label={t("Language")}
+        value={languages}
+        options={[
+          ...[...new Set([defaultTextLanguages(), languages])].map((option) => ({
+            value: option,
+            label: textLanguagesLabel(option),
+          })),
+          ...TEXT_LANGUAGES.filter(
+            (l) => l.code !== languages && l.code !== defaultTextLanguages(),
+          ).map((l) => ({ value: l.code, label: t(l.name) })),
+        ]}
+        onChange={setLanguages}
+      />
+    </span>
   );
   return (
     <div className="scan-bar" role="status">
@@ -993,19 +994,17 @@ function HighlightCard({
     >
       <div className="flex items-center gap-1 text-2xs text-muted-foreground">
         <GripVertical className="drag-grip size-3 flex-none" aria-hidden />
-        <span className={cn("category-dot", `dot-${highlight.category}`)} />
-        <select
+        <Select
           className="category-select"
           aria-label={t("Category")}
           value={highlight.category}
-          onChange={(event) => onCategory(event.target.value as Category)}
-        >
-          {CATEGORIES.map((category) => (
-            <option key={category.id} value={category.id}>
-              {category.label}
-            </option>
-          ))}
-        </select>
+          options={CATEGORIES.map((category) => ({
+            value: category.id,
+            label: category.label,
+            icon: <span className={cn("category-dot", `dot-${category.id}`)} />,
+          }))}
+          onChange={onCategory}
+        />
         {highlight.page && (
           <span className="tabular-nums">{placeMark(unit, highlight.page)}</span>
         )}

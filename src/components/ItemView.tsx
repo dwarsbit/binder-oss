@@ -12,6 +12,7 @@ import {
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { Editor } from "@scholarkit/editor/components/Editor";
 import { Backlinks } from "@scholarkit/editor/components/PageLinks";
+import { Select } from "@scholarkit/editor/components/Select";
 import { cn } from "@scholarkit/editor/lib/cn";
 import type { Backlink } from "@scholarkit/editor/lib/links";
 import { baseName } from "@scholarkit/editor/lib/paths";
@@ -27,6 +28,7 @@ import {
 } from "@/lib/binder";
 import { READING } from "@/lib/items";
 import { KindIcon } from "./KindIcon";
+import { StatusDot } from "./StatusDot";
 import { t } from "@scholarkit/i18n";
 
 /** A text property, changed when the field is left or Enter is pressed. */
@@ -433,12 +435,16 @@ export function ItemView({ focusRef, focusEndRef, titleRef, ...props }: ItemView
           <dl className="item-props">
             <dt>{t("Kind")}</dt>
             <dd>
-              <select
-                className="prop-input w-auto pr-1"
+              <Select
+                className="prop-input w-auto"
                 aria-label={t("Kind")}
                 value={item.kind}
-                onChange={(event) => {
-                  const kind = event.target.value as Kind;
+                options={KINDS.map((kind) => ({
+                  value: kind.id,
+                  label: kind.label,
+                  icon: <KindIcon kind={kind.id} />,
+                }))}
+                onChange={(kind) => {
                   // A note has no status; a source taken for a note keeps none either.
                   const status = isOwnWriting(kind)
                     ? kind === "thought"
@@ -447,38 +453,28 @@ export function ItemView({ focusRef, focusEndRef, titleRef, ...props }: ItemView
                     : (item.status ?? "inbox");
                   props.onChange({ kind, status });
                 }}
-              >
-                {KINDS.map((kind) => (
-                  <option key={kind.id} value={kind.id}>
-                    {kind.label}
-                  </option>
-                ))}
-              </select>
+              />
             </dd>
             {item.kind !== "note" && (
               <>
                 <dt>{t("Status")}</dt>
                 <dd className="flex-nowrap">
-                  <span
-                    className={cn("status-dot", item.status && `status-${item.status}`)}
-                  />
-                  <select
-                    className="prop-input w-auto pr-1"
+                  <Select
+                    className="prop-input w-auto"
                     aria-label={t("Status")}
                     value={item.status ?? ""}
-                    onChange={(event) =>
-                      props.onChange({ status: event.target.value || null })
-                    }
-                  >
-                    {item.kind === "thought" && (
-                      <option value="">{t("In notes")}</option>
-                    )}
-                    {STATUSES.map((status) => (
-                      <option key={status.id} value={status.id}>
-                        {status.label}
-                      </option>
-                    ))}
-                  </select>
+                    options={[
+                      ...(item.kind === "thought"
+                        ? [{ value: "", label: t("In notes"), icon: <StatusDot /> }]
+                        : []),
+                      ...STATUSES.map((status) => ({
+                        value: status.id as string,
+                        label: status.label,
+                        icon: <StatusDot status={status.id} />,
+                      })),
+                    ]}
+                    onChange={(status) => props.onChange({ status: status || null })}
+                  />
                 </dd>
               </>
             )}

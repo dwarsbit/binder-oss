@@ -1,6 +1,7 @@
 import { BookOpen, Check, Loader2, RefreshCw, Sparkles, X } from "lucide-react";
 import { useState } from "react";
 import { cn } from "@scholarkit/editor/lib/cn";
+import { Select } from "@scholarkit/editor/components/Select";
 import { safeHref } from "@scholarkit/editor/lib/safe-href";
 import { KINDS, kindLabel, type Item, type Kind } from "@/lib/binder";
 import {
@@ -12,6 +13,7 @@ import {
   type Proposal,
 } from "@/lib/assistant/file";
 import { t, tn } from "@scholarkit/i18n";
+import { KindIcon } from "./KindIcon";
 
 const LINK_BUTTON =
   "inline-flex h-6 flex-none items-center gap-1 rounded-[5px] px-1.5 text-xs font-medium text-tint-foreground hover:bg-tint-soft disabled:opacity-50";
@@ -139,18 +141,19 @@ function ProposalCard({
           row(
             t("Kind"),
             kindLabel(item.kind),
-            <select
+            <Select
               className="prop-input"
               aria-label={t("Proposed kind")}
-              value={kind}
-              onChange={(event) => setKind(event.target.value as Kind)}
-            >
-              {KINDS.filter((k) => k.id !== "note" && k.id !== "thought").map((k) => (
-                <option key={k.id} value={k.id}>
-                  {k.label}
-                </option>
-              ))}
-            </select>,
+              value={kind ?? ""}
+              options={KINDS.filter((k) => k.id !== "note" && k.id !== "thought").map(
+                (k) => ({
+                  value: k.id,
+                  label: k.label,
+                  icon: <KindIcon kind={k.id} />,
+                }),
+              )}
+              onChange={(next) => setKind(next as Kind)}
+            />,
           )}
         {proposal.title !== undefined &&
           row(

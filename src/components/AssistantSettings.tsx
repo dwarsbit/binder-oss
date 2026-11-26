@@ -15,6 +15,7 @@ import {
 } from "@/lib/assistant/providers";
 import { hasKey, listModels, setKey } from "@/lib/assistant/transport";
 import { t, tn } from "@scholarkit/i18n";
+import { Select } from "@scholarkit/editor/components/Select";
 
 const FIELD =
   "h-7 w-full rounded-md border bg-background px-2 text-[13px] outline-none focus:border-ring";
@@ -137,20 +138,22 @@ export function AssistantSettings({
       </p>
       <div className="settings-grid mt-2">
         <label htmlFor="assistant-provider">{t("Provider")}</label>
-        <select
+        <Select
           id="assistant-provider"
           className={FIELD}
           value={provider?.id ?? ""}
-          onChange={(event) => choose(event.target.value)}
-        >
-          <option value="">{t("Off")}</option>
-          {choosable().map((p) => (
-            <option key={p.id} value={p.id}>
-              {p.name}
-              {!p.needsKey && p.id !== "custom" ? ` ${t("(on this computer)")}` : ""}
-            </option>
-          ))}
-        </select>
+          options={[
+            { value: "", label: t("Off") },
+            ...choosable().map((p) => ({
+              value: p.id as string,
+              label:
+                !p.needsKey && p.id !== "custom"
+                  ? `${p.name} ${t("(on this computer)")}`
+                  : p.name,
+            })),
+          ]}
+          onChange={choose}
+        />
 
         {provider?.id === "custom" && (
           <>
@@ -211,29 +214,24 @@ export function AssistantSettings({
           <>
             <label htmlFor="assistant-model">{t("Model")}</label>
             <div className="flex flex-col gap-1.5">
-              <select
+              <Select
                 id="assistant-model"
                 className={FIELD}
                 value={other ? OTHER : listed ? settings.model : ""}
-                onChange={(event) => {
-                  if (event.target.value === OTHER) {
+                placeholder={t("Choose a model")}
+                options={[
+                  ...options.map((m) => ({ value: m, label: m })),
+                  { value: OTHER, label: t("Other…") },
+                ]}
+                onChange={(model) => {
+                  if (model === OTHER) {
                     setTyping(true);
                     return;
                   }
                   setTyping(false);
-                  save({ model: event.target.value });
+                  save({ model });
                 }}
-              >
-                <option value="" disabled>
-                  {t("Choose a model")}
-                </option>
-                {options.map((m) => (
-                  <option key={m} value={m}>
-                    {m}
-                  </option>
-                ))}
-                <option value={OTHER}>{t("Other…")}</option>
-              </select>
+              />
               {other && (
                 <input
                   key={`model:${settings.model}`}

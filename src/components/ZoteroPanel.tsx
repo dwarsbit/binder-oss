@@ -6,6 +6,7 @@ import {
   PRIMARY_BUTTON,
 } from "@scholarkit/editor/components/Dialog";
 import { cn } from "@scholarkit/editor/lib/cn";
+import { Select } from "@scholarkit/editor/components/Select";
 import { activeSources, sourceName } from "@scholarkit/editor/references/sources";
 import {
   librariesOf,
@@ -185,11 +186,15 @@ export function ZoteroPanel({
       <>
         <div className="mt-3 flex flex-wrap gap-2">
           {libraries.length > 1 && (
-            <select
+            <Select
               aria-label={t("Library")}
-              value={libraryAt}
-              onChange={(event) => {
-                setLibraryAt(Number(event.target.value));
+              value={String(libraryAt)}
+              options={libraries.map((lib, index) => ({
+                value: String(index),
+                label: lib.group || sourceName(lib.source),
+              }))}
+              onChange={(at) => {
+                setLibraryAt(Number(at));
                 setCollections(null);
                 setCollection(null);
                 setWorks(null);
@@ -198,13 +203,7 @@ export function ZoteroPanel({
                 setProblem(null);
               }}
               className="h-8 max-w-48 rounded-md border bg-background px-2 text-[13px]"
-            >
-              {libraries.map((lib, index) => (
-                <option key={`${lib.source.id}/${lib.path}`} value={index}>
-                  {lib.group || sourceName(lib.source)}
-                </option>
-              ))}
-            </select>
+            />
           )}
           <form
             className="flex min-w-48 flex-1 gap-2"

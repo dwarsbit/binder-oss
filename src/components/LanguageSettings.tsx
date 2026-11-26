@@ -8,6 +8,7 @@ import {
   t,
 } from "@scholarkit/i18n";
 import { languageCodes, switchLanguage } from "@/lib/languages";
+import { Select } from "@scholarkit/editor/components/Select";
 
 const FIELD =
   "h-7 w-full rounded-md border bg-background px-2 text-[13px] outline-none focus:border-ring";
@@ -50,21 +51,20 @@ export function LanguageSettings() {
       </p>
       <div className="settings-grid mt-2">
         <label htmlFor="interface-language">{t("Language")}</label>
-        <select
+        <Select
           id="interface-language"
           className={FIELD}
           value={value}
-          onChange={(event) => choose(event.target.value)}
-        >
-          <option value={SYSTEM}>
-            {t("System ({language})", { language: system })}
-          </option>
-          {languageCodes.map((code) => (
-            <option key={code} value={code} lang={code}>
-              {nameOf(code)}
-            </option>
-          ))}
-        </select>
+          options={[
+            { value: SYSTEM, label: t("System ({language})", { language: system }) },
+            ...languageCodes.map((code) => ({
+              value: code,
+              label: nameOf(code),
+              lang: code,
+            })),
+          ]}
+          onChange={choose}
+        />
       </div>
       {problem && <p className="mt-2 text-xs text-destructive">{problem}</p>}
     </section>

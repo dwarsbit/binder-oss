@@ -4,6 +4,7 @@
 
 - **Lists** in the sidebar show the items that pass the filters you choose: status, kind, tag, year, when they were added, whether they have a file, author and where they were published. Click **+** next to **Lists** to start one, click a filter to change it and **Filter** to add one. A binder starts with four lists: **Added this week**, **Ready to read**, **Missing a PDF** and **Books and chapters**; rename, duplicate or delete them from the **⋯** menu. Lists are kept in the binder, so they are the same on every computer and in the browser. See [the binder format](docs/format.md).
 - **Notes** shows every note and thought, also a thought still in your inbox. A thought leaves the inbox with **Take out of inbox**, and stays in **Notes**.
+- Dropdowns open Binder's own list instead of your system's, in the same style as the rest of Binder. **Status** shows each status's color, **Kind** each kind's icon and a highlight's category its color, in the list and once chosen.
 
 ## 0.5.0 (2026-11-26)
 
