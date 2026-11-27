@@ -314,6 +314,11 @@ export const plansResponse = z.object({
     plus: z.number().int().positive(),
     pro: z.number().int().positive(),
   }),
+  /**
+   * How many times Plus's monthly assistant on Scholarkit's model Pro gets (Free gets none).
+   * Left out by servers from before the assistant.
+   */
+  assistantMultiple: z.object({ pro: z.number().int().positive() }).optional(),
 });
 export type PlansResponse = z.infer<typeof plansResponse>;
 

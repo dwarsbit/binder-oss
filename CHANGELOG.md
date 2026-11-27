@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.8.0 (unreleased)
+
+- The account menu shows how much of this month's assistant you've used, on Plus and Pro, next to storage.
+- The assistant speaks Dutch, German, French and Spanish too: its buttons, menus and messages follow the interface language.
+
 ## 0.7.0 (2026-11-26)
 
 - The assistant is the same as in Polemic and Cursive. Press **Ask** at the top, or ⌘J, to ask in a bar at the bottom of the window, or choose a panel at the side under **Settings**, in **Assistant**. It answers from every source in your binder, and each quote in an answer is checked word for word against the source: click it to open the source at that passage. Select text in the reader and choose **Ask** to ask about it. The assistant can suggest properties, tags, highlights or a note, and finds papers to add, missing details and free PDFs; nothing changes until you accept its card. An item set to keep the assistant away stays away. Background reading now shows in the same bar or panel.
