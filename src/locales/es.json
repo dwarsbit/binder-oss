@@ -21,8 +21,8 @@
   "Reading the text": "Leyendo el texto",
   "The model wrote nothing Binder could check against the source.": "El modelo no ha escrito nada que Binder pueda comprobar con la fuente.",
   "{count} statements were left out: their passage isn't in the source.": {
-    "many": "Se han omitido {count} afirmaciones: su pasaje no está en la fuente.",
     "one": "Se ha omitido {count} afirmación: su pasaje no está en la fuente.",
+    "many": "Se han omitido {count} afirmaciones: su pasaje no está en la fuente.",
     "other": "Se han omitido {count} afirmaciones: su pasaje no está en la fuente."
   },
   "The note couldn't be saved.": "",
@@ -49,15 +49,15 @@
   "Back to the item": "Volver al elemento",
   "Reading {title}": "Leyendo {title}",
   "· {count} more": {
-    "many": "· {count} más",
     "one": "· {count} más",
+    "many": "· {count} más",
     "other": "· {count} más"
   },
   "Stop": "Detener",
   "Show the sidebar": "Mostrar la barra lateral",
   "{count} items": {
-    "many": "{count} elementos",
     "one": "{count} elemento",
+    "many": "{count} elementos",
     "other": "{count} elementos"
   },
   "Export…": "Exportar…",
@@ -143,8 +143,8 @@
   "Saved as a note.": "",
   "Save as note": "",
   "{count} highlights in “{title}”": {
-    "many": "",
     "one": "",
+    "many": "",
     "other": ""
   },
   "p. {n}": "",
@@ -155,13 +155,13 @@
   "Saved to the item.": "",
   "Save to the item": "",
   "Read {count} sources in the background": {
-    "many": "",
     "one": "",
+    "many": "",
     "other": ""
   },
   "and {count} more": {
-    "many": "",
     "one": "",
+    "many": "",
     "other": ""
   },
   "Reading. What it finds shows with each item.": "",
@@ -209,8 +209,8 @@
   "Take over": "Adoptar",
   "Dismiss “{part}”": "Descartar «{part}»",
   "{count} proposed highlights.": {
-    "many": "{count} resaltados propuestos.",
     "one": "{count} resaltado propuesto.",
+    "many": "{count} resaltados propuestos.",
     "other": "{count} resaltados propuestos."
   },
   "Keep the ones you want in the reader.": "Conserva los que quieras en el lector.",
@@ -244,8 +244,8 @@
   "Checking…": "Comprobando…",
   "Check the connection": "Comprobar la conexión",
   "Connected. {count} models to choose from.": {
-    "many": "Conectado. {count} modelos para elegir.",
     "one": "Conectado. {count} modelo para elegir.",
+    "many": "Conectado. {count} modelos para elegir.",
     "other": "Conectado. {count} modelos para elegir."
   },
   "{name} didn't answer. Is it running?": "{name} no ha respondido. ¿Se está ejecutando?",
@@ -285,13 +285,13 @@
   "Saved. Not synced: this binder is no longer in your account": "Guardado. Sin sincronizar: este binder ya no está en tu cuenta",
   "Saved. Not synced: {message}": "Guardado. Sin sincronizar: {message}",
   "Saved and synced. {count} files stay on this computer: your account is full": {
-    "many": "Guardado y sincronizado. {count} archivos se quedan en este ordenador: tu cuenta está llena",
     "one": "Guardado y sincronizado. {count} archivo se queda en este ordenador: tu cuenta está llena",
+    "many": "Guardado y sincronizado. {count} archivos se quedan en este ordenador: tu cuenta está llena",
     "other": "Guardado y sincronizado. {count} archivos se quedan en este ordenador: tu cuenta está llena"
   },
   "Saved and synced. {count} files stay on this computer: too large for your account": {
-    "many": "Guardado y sincronizado. {count} archivos se quedan en este ordenador: son demasiado grandes para tu cuenta",
     "one": "Guardado y sincronizado. {count} archivo se queda en este ordenador: es demasiado grande para tu cuenta",
+    "many": "Guardado y sincronizado. {count} archivos se quedan en este ordenador: son demasiado grandes para tu cuenta",
     "other": "Guardado y sincronizado. {count} archivos se quedan en este ordenador: son demasiado grandes para tu cuenta"
   },
   "Error reports": "Informes de errores",
@@ -301,8 +301,8 @@
   "For reference managers: Zotero, Mendeley, EndNote and most others.": "Para gestores de referencias: Zotero, Mendeley, EndNote y la mayoría de los demás.",
   "For Pandoc, and other tools that format citations in a CSL style.": "Para Pandoc y otras herramientas que dan formato a las citas con un estilo CSL.",
   "{count} sources": {
-    "many": "{count} fuentes",
     "one": "{count} fuente",
+    "many": "{count} fuentes",
     "other": "{count} fuentes"
   },
   "Binder couldn't copy the references. Save them as a file instead.": "Binder no ha podido copiar las referencias. Guárdalas como archivo.",
@@ -324,8 +324,8 @@
   "File": "Archivo",
   "Author": "Autor",
   "Last {count} days": {
-    "many": "Últimos {count} días",
     "one": "Último {count} día",
+    "many": "Últimos {count} días",
     "other": "Últimos {count} días"
   },
   "{year} or later": "{year} o después",
@@ -440,8 +440,8 @@
   "No items match “{query}”": "Ningún elemento coincide con «{query}»",
   "Search the titles, details and notes of every item, and the text of its PDF or kept page.": "Busca en los títulos, los datos y las notas de cada elemento, y en el texto de su PDF o página guardada.",
   "{count} matches": {
-    "many": "{count} coincidencias",
     "one": "{count} coincidencia",
+    "many": "{count} coincidencias",
     "other": "{count} coincidencias"
   },
   "↑↓ to choose, ↵ to open": "↑↓ para elegir, ↵ para abrir",
@@ -460,8 +460,8 @@
   "Replace with": "Reemplazar por",
   "Replace all": "Reemplazar todo",
   "Replaced {count} matches": {
-    "many": "Se han reemplazado {count} coincidencias",
     "one": "Se ha reemplazado {count} coincidencia",
+    "many": "Se han reemplazado {count} coincidencias",
     "other": "Se han reemplazado {count} coincidencias"
   },
   "Only the desktop app can reach the Zotero app.": "Solo la aplicación de escritorio puede acceder a la aplicación Zotero.",
@@ -501,8 +501,8 @@
   "Check key": "Comprobar clave",
   "User ID": "ID de usuario",
   "{count} works": {
-    "many": "{count} obras",
     "one": "{count} obra",
+    "many": "{count} obras",
     "other": "{count} obras"
   },
   "Add a BibTeX file": "Añadir un archivo BibTeX",
@@ -542,8 +542,8 @@
   "{first} and {second}": "{first} y {second}",
   "Nothing was added: these works are in the binder already.": "No se ha añadido nada: estas obras ya están en el binder.",
   "Added {count} works to the inbox.": {
-    "many": "Se han añadido {count} obras a la bandeja de entrada.",
     "one": "Se ha añadido {count} obra a la bandeja de entrada.",
+    "many": "Se han añadido {count} obras a la bandeja de entrada.",
     "other": "Se han añadido {count} obras a la bandeja de entrada."
   },
   "Looking for your Zotero libraries…": "Buscando tus bibliotecas de Zotero…",
@@ -559,8 +559,8 @@
   "Add collection": "Añadir colección",
   "All in the binder": "Todo en el binder",
   "Add {count} works": {
-    "many": "Añadir {count} obras",
     "one": "Añadir {count} obra",
+    "many": "Añadir {count} obras",
     "other": "Añadir {count} obras"
   },
   "Reading the works…": "Leyendo las obras…",
@@ -584,8 +584,8 @@
   "Listed the items": "",
   "Read “{title}”": "",
   "Searched {count} sources": {
-    "many": "",
     "one": "",
+    "many": "",
     "other": ""
   },
   "Searched the sources": "",
@@ -733,8 +733,8 @@
   "↑↓ to choose, ↵ to link": "↑↓ para elegir, ↵ para enlazar",
   "Linked from": "Enlazada desde",
   "Linked from {count} pages": {
-    "many": "Enlazada desde {count} páginas",
     "one": "Enlazada desde {count} página",
+    "many": "Enlazada desde {count} páginas",
     "other": "Enlazada desde {count} páginas"
   },
   "Text": "Texto",
@@ -797,16 +797,16 @@
   "Learning goals": "Objetivos de aprendizaje",
   "What a learner can do after this page": "Lo que un estudiante sabe hacer después de esta página",
   "{count} goals": {
-    "many": "{count} objetivos",
     "one": "{count} objetivo",
+    "many": "{count} objetivos",
     "other": "{count} objetivos"
   },
   "Goal {number}": "Objetivo {number}",
   "Key terms": "Términos clave",
   "The published page also explains them where its text uses them": "La página publicada también los explica donde su texto los usa",
   "{count} terms": {
-    "many": "{count} términos",
     "one": "{count} término",
+    "many": "{count} términos",
     "other": "{count} términos"
   },
   "Term": "Término",
@@ -829,8 +829,8 @@
   "Fill in the blanks": "Rellenar los huecos",
   "Learners type the missing words": "Los estudiantes escriben las palabras que faltan",
   "{count} blanks": {
-    "many": "{count} huecos",
     "one": "{count} hueco",
+    "many": "{count} huecos",
     "other": "{count} huecos"
   },
   "A question that pushes toward one answer is called a {{leading}} question.": "Una pregunta que empuja hacia una respuesta se llama pregunta {{sugestiva}}.",
@@ -853,8 +853,8 @@
   "Flashcards": "Tarjetas",
   "Learners click a card to turn it": "Los estudiantes hacen clic en una tarjeta para darle la vuelta",
   "{count} cards": {
-    "many": "{count} tarjetas",
     "one": "{count} tarjeta",
+    "many": "{count} tarjetas",
     "other": "{count} tarjetas"
   },
   "Front": "Anverso",
@@ -862,8 +862,8 @@
   "Back": "Reverso",
   "Back of card {number}": "Reverso de la tarjeta {number}",
   "{count} points": {
-    "many": "{count} puntos",
     "one": "{count} punto",
+    "many": "{count} puntos",
     "other": "{count} puntos"
   },
   "Quiz": "Cuestionario",
@@ -1000,8 +1000,8 @@
   "More from midnight UTC": "Más a partir de medianoche UTC",
   "Unlimited review links": "Enlaces de revisión ilimitados",
   "{active} of {count} active review links": {
-    "many": "{active} de {count} enlaces de revisión activos",
     "one": "{active} de {count} enlace de revisión activo",
+    "many": "{active} de {count} enlaces de revisión activos",
     "other": "{active} de {count} enlaces de revisión activos"
   },
   "Scholarkit account": "Cuenta de Scholarkit",
@@ -1035,8 +1035,8 @@
   "Remove {name}": "",
   "Thinking…": "",
   "{count} steps": {
-    "many": "",
     "one": "",
+    "many": "",
     "other": ""
   },
   "Stopped.": "",
