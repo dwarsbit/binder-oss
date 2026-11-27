@@ -732,6 +732,12 @@ main .assistant-floating {
   min-height: 0;
   flex: 1;
 }
+/* A narrow window: the panel lies over the page, which keeps the width. */
+@media (max-width: 860px) {
+  .app.has-dock {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
 .assistant-reading {
   display: flex;
   align-items: center;
