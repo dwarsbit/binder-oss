@@ -5,7 +5,7 @@
 # its own Caddy, on the account app's origin. Build from the repository root:
 #   docker build -f apps/binder/docker/web/Dockerfile .
 
-FROM node:22-alpine AS build
+FROM node:26-alpine AS build
 RUN corepack enable
 WORKDIR /repo
 COPY pnpm-lock.yaml pnpm-workspace.yaml package.json ./
@@ -46,7 +46,7 @@ RUN --mount=type=secret,id=sentry_auth_token,env=SENTRY_AUTH_TOKEN \
 # Tesseract's language files, for recognizing the text of scanned PDFs (src/lib/ocr.ts): the
 # "fast" models, from a fixed commit, checked against tessdata.sha256. The desktop app fetches
 # them from here too.
-FROM alpine:3.22 AS tessdata
+FROM alpine:3.24 AS tessdata
 ARG TESSDATA_COMMIT=87416418657359cb625c412a48b6e1d6d41c29bd
 WORKDIR /tessdata
 COPY apps/binder/docker/web/tessdata.sha256 ./

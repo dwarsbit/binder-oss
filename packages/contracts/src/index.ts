@@ -1383,6 +1383,40 @@ export const adminUserResponse = z.object({
       count: z.number().int().nonnegative(),
       limit: z.number().int().positive().nullable(),
     }),
+    /** The assistant on Scholarkit's model this UTC month. */
+    assistant: z.object({
+      /** The plan's monthly share in weighted tokens; 0 on Free. */
+      limitTokens: z.number().int().nonnegative(),
+      /** Weighted tokens used, as counted against the share. */
+      usedTokens: z.number().int().nonnegative(),
+      /** Share used, 0 to 100; null on Free. */
+      usedPercent: z.number().int().min(0).max(100).nullable(),
+      inputTokens: z.number().int().nonnegative(),
+      outputTokens: z.number().int().nonnegative(),
+      turns: z.number().int().nonnegative(),
+      /** Turns per app, e.g. { polemic: 12 }. */
+      apps: z.record(z.string(), z.number().int().nonnegative()),
+      /** Estimated, in US dollars, at ASSISTANT_PRICE_INPUT and _OUTPUT. */
+      costUsd: z.number().nonnegative(),
+    }),
+    /** The assistant, paper search and lookups per day, the last 30 UTC days, oldest first. */
+    api: z.object({
+      days: z.array(
+        z.object({
+          day: z.iso.date(),
+          inputTokens: z.number().int().nonnegative(),
+          outputTokens: z.number().int().nonnegative(),
+          searchesDetails: z.number().int().nonnegative(),
+          searchesTitles: z.number().int().nonnegative(),
+          searchesOwnKey: z.number().int().nonnegative(),
+          lookups: z.number().int().nonnegative(),
+        }),
+      ),
+      /** OpenAlex credits ($0.0001 each) these 30 days cost on Scholarkit's key. */
+      openalexCredits: z.number().int().nonnegative(),
+      /** The last four characters of the account's own OpenAlex key, or null without one. */
+      ownOpenAlexKey: z.string().nullable(),
+    }),
   }),
   /** Projects the account owns, most recently changed first. */
   projects: z.array(
@@ -1537,6 +1571,84 @@ export const adminInsightsResponse = z.object({
   ),
 });
 export type AdminInsightsResponse = z.infer<typeof adminInsightsResponse>;
+
+export const ADMIN_USAGE_RANGES = ["7d", "30d", "12m"] as const;
+export const adminUsageRange = z.enum(ADMIN_USAGE_RANGES);
+export type AdminUsageRange = z.infer<typeof adminUsageRange>;
+
+/** One account on the Usage page's list of accounts using the most. */
+export const adminUsageAccount = z.object({
+  id: z.string(),
+  name: z.string(),
+  email: z.string(),
+  plan,
+  assistantTokens: z.number().int().nonnegative(),
+  /** Share of this month's assistant tokens used, 0 to 100; null on Free. */
+  assistantPercent: z.number().int().min(0).max(100).nullable(),
+  searches: z.number().int().nonnegative(),
+  lookups: z.number().int().nonnegative(),
+  openalexCredits: z.number().int().nonnegative(),
+  /** Assistant and OpenAlex together, in US dollars; the assistant part is an estimate. */
+  costUsd: z.number().nonnegative(),
+});
+export type AdminUsageAccount = z.infer<typeof adminUsageAccount>;
+
+/**
+ * GET /api/admin/usage?range=7d|30d|12m: what the assistant, OpenAlex and the lookups cost us, in
+ * total and for the accounts using the most. Per day, or per week (from Monday) over 12 months.
+ */
+export const adminUsageResponse = z.object({
+  range: adminUsageRange,
+  /** "day" or "week": what one bar of the charts is. */
+  period: z.enum(["day", "week"]),
+  /** The day each bar starts, oldest first; the last one is today or this week. */
+  periods: z.array(z.iso.date()),
+  /** The assistant's model and the prices its costs are estimated at, per million tokens. */
+  assistantModel: z.string(),
+  assistantPrice: z.object({
+    input: z.number().nonnegative(),
+    output: z.number().nonnegative(),
+  }),
+  totals: z.object({
+    assistant: z.object({
+      inputTokens: z.number().int().nonnegative(),
+      outputTokens: z.number().int().nonnegative(),
+      turns: z.number().int().nonnegative(),
+      costUsd: z.number().nonnegative(),
+      /** Tokens read and written in the range just before, for "+12% on the 30 days before". */
+      previousTokens: z.number().int().nonnegative(),
+    }),
+    openalex: z.object({
+      calls: z.number().int().nonnegative(),
+      /** Calls for paper search; the rest were works looked up by DOI, PubMed or OpenAlex ID. */
+      searchCalls: z.number().int().nonnegative(),
+      credits: z.number().int().nonnegative(),
+      costUsd: z.number().nonnegative(),
+      /** Searches and lookups that could have gone to OpenAlex, answered from our cache. */
+      savedByCache: z.number().int().nonnegative(),
+    }),
+    searches: z.number().int().nonnegative(),
+    lookups: z.number().int().nonnegative(),
+  }),
+  /** What OpenAlex says our key used today, from the hourly check; null before the first one. */
+  openalexToday: z
+    .object({
+      usedUsd: z.number().nonnegative(),
+      budgetUsd: z.number().nonnegative(),
+    })
+    .nullable(),
+  /** Assistant tokens by app (polemic, binder, cursive, other). */
+  assistantTokens: z.array(insightsSeries),
+  /** OpenAlex calls on our key: search, lookup. */
+  openalexCalls: z.array(insightsSeries),
+  /** Lookups by kind: doi, pubmed, arxiv, isbn, openalex, open_access. */
+  lookups: z.array(insightsSeries),
+  /** Paper searches: titles, details, own_key. */
+  searches: z.array(insightsSeries),
+  /** The accounts using the most in the range, by cost, at most 50. */
+  accounts: z.array(adminUsageAccount),
+});
+export type AdminUsageResponse = z.infer<typeof adminUsageResponse>;
 
 /**
  * A clip from the Binder browser extension (`apps/binder/clipper`): a web page
