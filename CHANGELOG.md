@@ -4,6 +4,7 @@
 
 - The account menu shows how much of this month's assistant you've used, on Plus and Pro, next to storage.
 - The assistant speaks Dutch, German, French and Spanish too: its buttons, menus and messages follow the interface language.
+- In the browser, a page that was open while we updated the services reloads itself if it needs to, instead of leaving part of it blank.
 
 ## 0.7.0 (2026-11-26)
 
