@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.8.0 (unreleased)
+## 0.8.0 (2026-11-28)
 
 - On the account page, **Release news by email** gets you an email when a new version of Binder, Polemic or Cursive is out, at most once a month. It stays off unless you turn it on.
 - In the browser, **A new version is available** shows at the bottom left after we update Binder. **Load new version** saves your work first, then loads it; **Later** hides it until the next version. The desktop app's **Update ready** card has the same look.
