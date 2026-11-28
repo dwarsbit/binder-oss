@@ -193,6 +193,49 @@ export const deleteAccountRequest = z.union([
 ]);
 export type DeleteAccountRequest = z.infer<typeof deleteAccountRequest>;
 
+// Release news: an email when a new version of an app is out. Double opt-in: an address is on
+// the list once its owner opens the link we mail. Admins export the list to a newsletter tool.
+
+/** Where an address joined the list: a form on the website, or the switch on the account page. */
+export const newsSource = z.enum(["home", "footer", "news", "account"]);
+export type NewsSource = z.infer<typeof newsSource>;
+
+/** POST /api/news/subscribe, from the website (no session). Always answers 202 for a valid address. */
+export const newsSubscribeRequest = z.object({
+  email: z.string().trim().toLowerCase().pipe(z.email().max(254)),
+  source: newsSource.exclude(["account"]),
+});
+export type NewsSubscribeRequest = z.infer<typeof newsSubscribeRequest>;
+
+/** POST /api/news/confirm and /api/news/leave: the token from the link in the email. */
+export const newsTokenRequest = z.object({ token: z.string().min(16).max(128) });
+export type NewsTokenRequest = z.infer<typeof newsTokenRequest>;
+
+/** GET and PUT /api/account/news: whether the account's address gets the release news. */
+export const accountNews = z.object({ subscribed: z.boolean() });
+export type AccountNews = z.infer<typeof accountNews>;
+
+/** GET /api/admin/news: the size of the list. The addresses come only as the CSV export. */
+export const adminNewsResponse = z.object({
+  confirmed: z.number().int().nonnegative(),
+  /** Asked, not confirmed yet; removed after a week. */
+  pending: z.number().int().nonnegative(),
+  /** Confirmed addresses by where they joined, most first. */
+  bySource: z.array(
+    z.object({ source: z.string(), count: z.number().int().nonnegative() }),
+  ),
+  /** Confirmed in the last 7 days. */
+  lastWeek: z.number().int().nonnegative(),
+});
+export type AdminNewsResponse = z.infer<typeof adminNewsResponse>;
+
+/**
+ * The ?ref= of a link to Scholarkit, kept on the account it signs up: "review" (a Polemic review
+ * link), "site" (a Cursive site), "website", or an ad's own name. Lowercase letters, digits and
+ * dashes.
+ */
+export const signupSource = z.string().regex(/^[a-z0-9][a-z0-9-]{0,31}$/);
+
 // Billing: Plus and Pro subscriptions. The subscription's price decides the plan; without
 // one the user is on Free.
 
@@ -1471,6 +1514,8 @@ export const adminActionName = z.enum([
   "end_grant",
   "turn_off_two_step",
   "delete",
+  /** Downloaded the release news list; names no account. */
+  "export_news_list",
 ]);
 export type AdminActionName = z.infer<typeof adminActionName>;
 
@@ -1548,6 +1593,8 @@ export const adminInsightsResponse = z.object({
   }),
   /** By sign-in method. */
   signUps: z.array(insightsSeries),
+  /** By the ?ref= of the link they came from; "" for none. */
+  signUpSources: z.array(insightsSeries),
   /** Accounts active in each week, by app. */
   weeklyActive: z.array(insightsSeries),
   /** By app. */
