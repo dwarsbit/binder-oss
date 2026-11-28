@@ -114,6 +114,8 @@ export function serverStore(
   /** Whether everything typed has reached the server. */
   saved(): boolean;
   onSaved(listener: () => void): () => void;
+  /** Called when the server lets this window in anew, as after your role changed. */
+  onAccess(listener: () => void): () => void;
   close(): void;
 } {
   const doc = new Y.Doc();
@@ -121,6 +123,7 @@ export function serverStore(
   const listeners = new Set<(changes: PageChange[]) => void>();
   const fileListeners = new Set<(files: string[]) => void>();
   const savedListeners = new Set<() => void>();
+  const accessListeners = new Set<() => void>();
   let connection: Connection | null = null;
   let closed = false;
   // The items and files as the app last saw them.
@@ -186,6 +189,7 @@ export function serverStore(
       }
       connection = opened;
       opened.onUnsynced(() => savedListeners.forEach((listener) => listener()));
+      opened.onAuthenticated?.(() => accessListeners.forEach((listener) => listener()));
       if (info.writable && doc.getMap("meta").get("layout") === undefined) {
         doc.transact(() => doc.getMap("meta").set("layout", LAYOUT), LOCAL);
       }
@@ -283,6 +287,10 @@ export function serverStore(
     onSaved: (listener) => {
       savedListeners.add(listener);
       return () => savedListeners.delete(listener);
+    },
+    onAccess: (listener) => {
+      accessListeners.add(listener);
+      return () => accessListeners.delete(listener);
     },
     close: () => {
       closed = true;

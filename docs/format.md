@@ -155,6 +155,7 @@ it doesn't know, such as your own properties, are kept as written.
 | `zotero-version` | The version of the Zotero item when Binder last read it, so Binder can tell when it changed.                                                     |
 | `tags`           | Tags, as a list.                                                                                                                                 |
 | `added`          | The date the item was added, as `YYYY-MM-DD`.                                                                                                    |
+| `added-by`       | Who added the item, by their name, in a binder shared with others. Binder writes it from 0.9 on, and shows it to the others.                     |
 | `assistant`      | `false` keeps the assistant away from this item: it doesn't read it or write about it.                                                           |
 
 The body is your notes on the item, in Markdown, written in Binder's
@@ -423,6 +424,11 @@ Some things stay in the folder only:
 
 Which binder in the account a folder syncs with is kept in the app's data
 folder too, not in the binder.
+
+A binder in the account can be shared: its owner invites people to edit
+it or to read it. Everyone in it works on the same files, so an item's
+status, highlights and notes are the same for each of them. Someone who
+can read it gets the files and changes none of them.
 
 ## Coming later
 

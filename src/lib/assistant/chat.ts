@@ -38,6 +38,8 @@ export interface ChatHost extends BinderHost {
   ours(): boolean;
   /** The item open now, for the question to be about. */
   openItem(): Item | null;
+  /** Whether the binder was shared with you to read: its cards then change nothing. */
+  readOnly?(): boolean;
   /** Rejects with what went wrong. */
   applyProperties(path: string, changes: PropertyChange[]): void;
   /** Saves a new note; resolves with its path. */
@@ -278,6 +280,9 @@ export class BinderChat {
     const fail = (error: unknown) =>
       this.conversation.update(card, { ...card, note: messageOf(error) });
     try {
+      if (host.readOnly?.()) {
+        throw new Error(t("You can read this binder, but not change it."));
+      }
       switch (card.type) {
         case "properties":
           host.applyProperties(card.path, card.changes);

@@ -235,6 +235,8 @@ export interface AssistantPanelProps {
   onDismissPart: (part: PartId) => void;
   onRead?: () => void;
   onItemAssistant: (on: boolean) => void;
+  /** The binder was shared with you to read: what the assistant wrote shows, and nothing more. */
+  readOnly?: boolean;
 }
 
 /**
@@ -244,7 +246,9 @@ export interface AssistantPanelProps {
 export function AssistantPanel(props: AssistantPanelProps) {
   const { note, availability } = props;
   const busy = props.running !== null || props.queued;
+  const readOnly = props.readOnly ?? false;
 
+  if (readOnly && !note) return null;
   if (availability === "item-off" && !note) {
     return (
       <div className="assistant-row">
@@ -330,7 +334,7 @@ export function AssistantPanel(props: AssistantPanelProps) {
         <span className="min-w-0 flex-1 truncate text-muted-foreground">
           {[note.model, where, note.written].filter(Boolean).join(" · ")}
         </span>
-        {availability === "ready" && !busy && (
+        {availability === "ready" && !busy && !readOnly && (
           <button
             type="button"
             className={LINK_BUTTON}
@@ -362,7 +366,7 @@ export function AssistantPanel(props: AssistantPanelProps) {
           </button>
         </div>
       )}
-      {hasProposal(note.proposal) && (
+      {hasProposal(note.proposal) && !readOnly && (
         <ProposalCard
           key={JSON.stringify(note.proposal)}
           item={props.item}
@@ -383,23 +387,27 @@ export function AssistantPanel(props: AssistantPanelProps) {
             <h3>
               {t(known.heading)}
               <span className="flex-1" />
-              <button
-                type="button"
-                className={LINK_BUTTON}
-                title={t("Move this to your notes")}
-                onClick={() => props.onTakeOver(known.id)}
-              >
-                {t("Take over")}
-              </button>
-              <button
-                type="button"
-                className="grid size-6 place-items-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground"
-                aria-label={t("Dismiss “{part}”", { part: t(known.heading) })}
-                title={t("Dismiss")}
-                onClick={() => props.onDismissPart(known.id)}
-              >
-                <X className="size-3" aria-hidden />
-              </button>
+              {!readOnly && (
+                <>
+                  <button
+                    type="button"
+                    className={LINK_BUTTON}
+                    title={t("Move this to your notes")}
+                    onClick={() => props.onTakeOver(known.id)}
+                  >
+                    {t("Take over")}
+                  </button>
+                  <button
+                    type="button"
+                    className="grid size-6 place-items-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground"
+                    aria-label={t("Dismiss “{part}”", { part: t(known.heading) })}
+                    title={t("Dismiss")}
+                    onClick={() => props.onDismissPart(known.id)}
+                  >
+                    <X className="size-3" aria-hidden />
+                  </button>
+                </>
+              )}
             </h3>
             <div className="assistant-text">
               <PartText markdown={part.markdown} />
@@ -407,7 +415,7 @@ export function AssistantPanel(props: AssistantPanelProps) {
           </section>
         );
       })}
-      {proposed.length > 0 && (
+      {proposed.length > 0 && !readOnly && (
         <div className="assistant-row">
           <span className="flex-1">
             {tn(

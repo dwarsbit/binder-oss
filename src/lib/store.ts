@@ -381,3 +381,27 @@ export function browserStore(
     },
   };
 }
+
+/** Binder's own files: what it works out from a binder, such as the text of its PDFs. */
+const isOwnFile = (path: string) => path === ".binder" || path.startsWith(".binder/");
+
+/**
+ * The store, changing nothing in the binder while `readOnly()` says so: for a binder
+ * shared with you to read. What Binder works out for itself (`.binder/`) is still kept.
+ */
+export function guardWrites(store: BinderStore, readOnly: () => boolean): BinderStore {
+  const skip = (path: string) => readOnly() && !isOwnFile(path);
+  return {
+    ...store,
+    writePage: (path, source) =>
+      skip(path) ? Promise.resolve() : store.writePage(path, source),
+    createFolder: (path) => (skip(path) ? Promise.resolve() : store.createFolder(path)),
+    rename: (from, to) => (skip(from) ? Promise.resolve() : store.rename(from, to)),
+    remove: (path) => (skip(path) ? Promise.resolve() : store.remove(path)),
+    writeFile: (path, data) =>
+      skip(path) ? Promise.resolve() : store.writeFile(path, data),
+    download: store.download
+      ? (url, path) => (skip(path) ? Promise.resolve() : store.download!(url, path))
+      : undefined,
+  };
+}

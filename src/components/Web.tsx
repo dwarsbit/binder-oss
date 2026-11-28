@@ -18,8 +18,10 @@ import {
   type ServerProject,
 } from "@/lib/server";
 import { serverStore } from "@/lib/server-store";
+import { ShareDialog } from "@scholarkit/editor/components/ShareDialog";
 import { Mark } from "./Mark";
 import { AccountMenu } from "./AccountMenu";
+import { People, useOthers } from "./People";
 import { AppLoading, HomeMark } from "@scholarkit/editor/components/AppShell";
 import { webAddresses } from "@/lib/web-address";
 import { t } from "@scholarkit/i18n";
@@ -182,6 +184,8 @@ function OpenBinder({ id, account }: { id: string; account: Account }) {
   const store = useMemo(() => serverStore(server, id), [id]);
   const [info, setInfo] = useState<ServerProject | null>(null);
   const [saved, setSaved] = useState(true);
+  const [sharing, setSharing] = useState(false);
+  const { others, reload } = useOthers(server, info, account.id);
 
   useEffect(() => {
     clearTimeout(closing.get(store));
@@ -195,16 +199,22 @@ function OpenBinder({ id, account }: { id: string; account: Account }) {
     };
   }, [store]);
 
+  // The binder's access, read again whenever the server lets this window in anew: after
+  // the owner changed your role, the server drops the connection and it comes back.
   useEffect(() => {
     let current = true;
-    server.project(id).then(
-      (binder) => current && setInfo(binder),
-      () => {},
-    );
+    const read = () =>
+      server.project(id).then(
+        (binder) => current && setInfo(binder),
+        () => {},
+      );
+    void read();
+    const stop = store.onAccess(() => void read());
     return () => {
       current = false;
+      stop();
     };
-  }, [id]);
+  }, [id, store]);
 
   // A switch to another interface language reloads the page once the changes are in.
   useEffect(
@@ -232,28 +242,51 @@ function OpenBinder({ id, account }: { id: string; account: Account }) {
     return () => window.removeEventListener("beforeunload", onLeave);
   }, [store]);
 
-  const status =
-    info && !info.writable
+  // Shared with you to read: the binder shows as it is, with nothing to change it with.
+  const reader = info && (info.role === "viewer" || info.role === "commenter");
+  const status = reader
+    ? { text: t("You can read this binder") }
+    : info && !info.writable
       ? { text: t("You can read this binder. Your changes aren't saved"), warn: true }
       : saved
         ? undefined
         : { text: t("Saving…") };
 
   return (
-    <App
-      onPlans={() => window.location.assign("/account#plan")}
-      store={store}
-      status={status}
-      projectId={id}
-      onSwitchBinder={() => go(ADDRESS.list)}
-      homeHref="/"
-      account={accountMenu(account)}
-      onRenameBinder={
-        info?.role === "owner"
-          ? async (name) => setInfo(await server.renameProject(id, name))
-          : undefined
-      }
-    />
+    <>
+      <App
+        onPlans={() => window.location.assign("/account#plan")}
+        store={store}
+        status={status}
+        projectId={id}
+        onSwitchBinder={() => go(ADDRESS.list)}
+        homeHref="/"
+        account={accountMenu(account)}
+        share={info && <People people={others} onShare={() => setSharing(true)} />}
+        readOnly={reader ? { owner: info.owner.name } : undefined}
+        me={account.name}
+        shared={others.length > 0}
+        onRenameBinder={
+          info?.role === "owner"
+            ? async (name) => setInfo(await server.renameProject(id, name))
+            : undefined
+        }
+      />
+      {sharing && info && (
+        <ShareDialog
+          shared="binder"
+          server={server}
+          project={info}
+          me={account}
+          onLeft={() => go(ADDRESS.list)}
+          openPlans={() => window.location.assign("/account#plan")}
+          onClose={() => {
+            setSharing(false);
+            reload();
+          }}
+        />
+      )}
+    </>
   );
 }
 

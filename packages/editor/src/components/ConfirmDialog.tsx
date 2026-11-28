@@ -1,5 +1,6 @@
 import { useEffect, useRef } from "react";
 import { t } from "@scholarkit/i18n";
+import { PRIMARY_BUTTON } from "./Dialog";
 
 /** A question before something that can't be undone. */
 export function ConfirmDialog({
@@ -8,12 +9,15 @@ export function ConfirmDialog({
   confirmLabel,
   onConfirm,
   onCancel,
+  tone = "danger",
 }: {
   title: string;
   body: string;
   confirmLabel: string;
   onConfirm: () => void;
   onCancel: () => void;
+  /** Whether the yes undoes nothing for good, and asks to go ahead instead of warning. */
+  tone?: "danger" | "go";
 }) {
   const ref = useRef<HTMLDialogElement>(null);
   useEffect(() => {
@@ -51,7 +55,11 @@ export function ConfirmDialog({
           <button
             type="button"
             onClick={onConfirm}
-            className="h-8 rounded-md bg-destructive/10 px-3 text-[13px] font-medium text-destructive hover:bg-destructive/20"
+            className={
+              tone === "go"
+                ? PRIMARY_BUTTON
+                : "h-8 rounded-md bg-destructive/10 px-3 text-[13px] font-medium text-destructive hover:bg-destructive/20"
+            }
           >
             {confirmLabel}
           </button>

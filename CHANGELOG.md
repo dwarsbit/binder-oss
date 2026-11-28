@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.9.0 (unreleased)
+
+- **Share** a binder in your account, at the top right: invite people by email to edit it or to read it, change their role, or remove them. Inviting comes with Pro; the people you invite can be on any plan, and what they add counts toward your storage. In the desktop app, a binder syncs with your account first. Someone who can read a binder sees its items, sources, highlights and notes, and changes nothing. In a shared binder, an item someone else added says who did, under **Added by**. See [the binder format](docs/format.md).
+
 ## 0.8.0 (2026-11-28)
 
 - On the account page, **Release news by email** gets you an email when a new version of Binder, Polemic or Cursive is out, at most once a month. It stays off unless you turn it on.

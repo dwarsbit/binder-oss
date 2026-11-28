@@ -11,10 +11,13 @@ import { t } from "@scholarkit/i18n";
  * Signs the desktop app in to the Scholarkit account, in the browser.
  */
 export function AccountDialog({
+  note,
   onSignIn,
   onCancelSignIn,
   onClose,
 }: {
+  /** Why signing in is asked for now, in place of what an account does. */
+  note?: string;
   onSignIn: (create: boolean) => Promise<void>;
   onCancelSignIn: () => void;
   onClose: () => void;
@@ -39,9 +42,10 @@ export function AccountDialog({
       <p className="mt-1.5 text-[13px] text-muted-foreground">
         {busy
           ? t("Finish signing in in your browser, then come back here.")
-          : t(
+          : (note ??
+            t(
               "Sign in to sync a binder with your account, and open it on another computer or in your browser. Binder uses your free Scholarkit account.",
-            )}
+            ))}
       </p>
       <div className="mt-4 flex justify-end gap-2">
         {busy ? (

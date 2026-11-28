@@ -18,7 +18,7 @@ import {
 import { dragWindow, formatOpened } from "@scholarkit/editor/lib/platform";
 import { BINDER_FILE, writeBinderInfo } from "@/lib/binder";
 import type { ServerProject } from "@/lib/server";
-import { ConfirmDialog } from "./ConfirmDialog";
+import { ConfirmDialog } from "@scholarkit/editor/components/ConfirmDialog";
 import { Mark } from "./Mark";
 import { t } from "@scholarkit/i18n";
 

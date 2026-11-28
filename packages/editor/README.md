@@ -13,7 +13,8 @@ It also holds what both apps need to keep a project in the Scholarkit
 account in the browser: the project's synced document
 (`lib/project-doc.ts`), its connection to the server (`lib/sync.ts`) and
 the account's API (`lib/account.ts`), which each app extends with its own
-calls.
+calls. The Share dialog (`components/ShareDialog.tsx`), where the owner invites
+people to a project or a binder, is shared too.
 
 ## Use it in an app
 

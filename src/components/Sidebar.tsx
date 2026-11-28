@@ -30,8 +30,10 @@ export interface SidebarProps {
   tags: Array<{ tag: string; count: number }>;
   /** The saved lists, with how many items each shows. */
   lists: Array<{ name: string; count: number }>;
-  onNewList: () => void;
-  onAdd: () => void;
+  /** Starts a list, where the binder can be changed. */
+  onNewList?: () => void;
+  /** Opens Add to binder, where the binder can be changed. */
+  onAdd?: () => void;
   onSearch: () => void;
   onSettings: () => void;
   /** Gives the binder another name, where the app can. Rejects with why not. */
@@ -299,17 +301,19 @@ export function Sidebar(props: SidebarProps) {
 
       <div className="min-h-0 flex-1 overflow-y-auto pb-2">
         <Question question={props.question} onChange={props.onQuestion} />
-        <button
-          type="button"
-          onClick={props.onAdd}
-          className="mx-1 mb-2 flex h-7 w-[calc(100%-8px)] items-center gap-2 rounded-md border bg-card px-2 font-medium shadow-[0_1px_2px_oklch(0_0_0/5%)] hover:bg-muted"
-        >
-          <Plus className={ICON} aria-hidden />
-          <span className="flex-1 text-left">{t("Add to binder")}</span>
-          <span className="text-2xs font-normal text-muted-foreground">
-            {t("Cmd/Ctrl + N")}
-          </span>
-        </button>
+        {props.onAdd && (
+          <button
+            type="button"
+            onClick={props.onAdd}
+            className="mx-1 mb-2 flex h-7 w-[calc(100%-8px)] items-center gap-2 rounded-md border bg-card px-2 font-medium shadow-[0_1px_2px_oklch(0_0_0/5%)] hover:bg-muted"
+          >
+            <Plus className={ICON} aria-hidden />
+            <span className="flex-1 text-left">{t("Add to binder")}</span>
+            <span className="text-2xs font-normal text-muted-foreground">
+              {t("Cmd/Ctrl + N")}
+            </span>
+          </button>
+        )}
         <nav aria-label={t("Lists")} className="flex flex-col gap-px">
           <NavRow
             icon={<Inbox className={ICON} aria-hidden />}
@@ -343,15 +347,17 @@ export function Sidebar(props: SidebarProps) {
         <nav aria-label={t("Saved lists")} className="mt-3 flex flex-col gap-px">
           <h2 className="flex h-7 items-center pr-1 pl-2 text-2xs font-normal text-muted-foreground">
             <span className="flex-1">{t("Lists")}</span>
-            <button
-              type="button"
-              aria-label={t("New list")}
-              title={t("New list")}
-              onClick={props.onNewList}
-              className="grid size-6 place-items-center rounded-md hover:bg-accent hover:text-foreground"
-            >
-              <Plus className={ICON} aria-hidden />
-            </button>
+            {props.onNewList && (
+              <button
+                type="button"
+                aria-label={t("New list")}
+                title={t("New list")}
+                onClick={props.onNewList}
+                className="grid size-6 place-items-center rounded-md hover:bg-accent hover:text-foreground"
+              >
+                <Plus className={ICON} aria-hidden />
+              </button>
+            )}
           </h2>
           {props.lists.map((list) => (
             <NavRow

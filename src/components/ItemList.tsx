@@ -163,7 +163,10 @@ const columnAt = (x: number, y: number): Status | null => {
   return (column?.dataset.status as Status | undefined) ?? null;
 };
 
-/** The reading list as a board: a column for each status. Dragging a card changes its status. */
+/**
+ * The reading list as a board: a column for each status. Dragging a card changes its
+ * status, where the binder can be changed.
+ */
 export function Board({
   items,
   onOpen,
@@ -171,12 +174,12 @@ export function Board({
 }: {
   items: Item[];
   onOpen: (path: string) => void;
-  onStatus: (path: string, status: Status) => void;
+  onStatus?: (path: string, status: Status) => void;
 }) {
   const [drag, setDrag] = useState<{ path: string; over: Status | null } | null>(null);
 
   const press = (event: React.PointerEvent, item: Item) => {
-    if (event.button !== 0 || event.pointerType === "touch") return;
+    if (!onStatus || event.button !== 0 || event.pointerType === "touch") return;
     let over: Status | null = null;
     startPointerDrag(event, {
       onStart: () => setDrag({ path: item.path, over: null }),

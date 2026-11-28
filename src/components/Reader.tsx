@@ -972,6 +972,7 @@ function HighlightCard({
   onRemove,
   onAddToNotes,
   dragData,
+  readOnly = false,
 }: {
   highlight: Highlight;
   unit: Unit;
@@ -980,6 +981,8 @@ function HighlightCard({
   onRemove: () => void;
   onAddToNotes: () => void;
   dragData: () => { html: string; text: string };
+  /** The highlight shows with its category, and nothing changes it. */
+  readOnly?: boolean;
 }) {
   return (
     <li
@@ -997,6 +1000,7 @@ function HighlightCard({
         <Select
           className="category-select"
           aria-label={t("Category")}
+          disabled={readOnly}
           value={highlight.category}
           options={CATEGORIES.map((category) => ({
             value: category.id,
@@ -1009,24 +1013,28 @@ function HighlightCard({
           <span className="tabular-nums">{placeMark(unit, highlight.page)}</span>
         )}
         <span className="flex-1" />
-        <button
-          type="button"
-          className="card-button"
-          aria-label={t("Add to notes")}
-          title={t("Add to notes")}
-          onClick={onAddToNotes}
-        >
-          <TextQuote className="size-3.5" aria-hidden />
-        </button>
-        <button
-          type="button"
-          className="card-button hover:text-destructive"
-          aria-label={t("Delete highlight")}
-          title={t("Delete highlight")}
-          onClick={onRemove}
-        >
-          <Trash2 className="size-3.5" aria-hidden />
-        </button>
+        {!readOnly && (
+          <>
+            <button
+              type="button"
+              className="card-button"
+              aria-label={t("Add to notes")}
+              title={t("Add to notes")}
+              onClick={onAddToNotes}
+            >
+              <TextQuote className="size-3.5" aria-hidden />
+            </button>
+            <button
+              type="button"
+              className="card-button hover:text-destructive"
+              aria-label={t("Delete highlight")}
+              title={t("Delete highlight")}
+              onClick={onRemove}
+            >
+              <Trash2 className="size-3.5" aria-hidden />
+            </button>
+          </>
+        )}
       </div>
       <button type="button" className="highlight-text" onClick={onOpen}>
         {highlight.text}
@@ -1060,6 +1068,11 @@ export interface ReaderProps {
   onSaveFile?: (bytes: Uint8Array) => Promise<void>;
   /** At the end of the bar, such as the Ask button. */
   actions?: React.ReactNode;
+  /**
+   * The binder was shared with you to read: the source and its highlights show, and
+   * selecting text offers only Ask.
+   */
+  readOnly?: boolean;
   /** Asks the assistant about a selection: its words, its page and where it is on screen. */
   onAsk?: (selection: {
     text: string;
@@ -1406,7 +1419,7 @@ export function Reader(props: ReaderProps) {
           onKeyUp={(event) => event.shiftKey && offer()}
           onScroll={() => menu && setMenu(null)}
         >
-          {pdf && pdfDoc && data && props.onSaveFile && !problem && (
+          {pdf && pdfDoc && data && props.onSaveFile && !props.readOnly && !problem && (
             <ScanBar
               doc={pdfDoc}
               bytes={data}
@@ -1489,18 +1502,21 @@ export function Reader(props: ReaderProps) {
                     onRemove={() => props.onRemoveHighlight(h.id)}
                     onAddToNotes={() => props.onAddToNotes(h)}
                     dragData={() => props.quoteOf(h)}
+                    readOnly={props.readOnly}
                   />
                 ))}
               </ul>
             ) : (
               <p className="px-4 pb-3 text-xs text-muted-foreground">
-                {t(
-                  "Select text in the source to highlight it as a claim, definition, method, finding or quote.",
-                )}
+                {props.readOnly
+                  ? t("No highlights in this source yet.")
+                  : t(
+                      "Select text in the source to highlight it as a claim, definition, method, finding or quote.",
+                    )}
               </p>
             )}
           </section>
-          {proposed.length > 0 && (
+          {proposed.length > 0 && !props.readOnly && (
             <section className="reader-proposed" aria-label={t("Proposed highlights")}>
               <h2 className="panel-heading">
                 <Sparkles className="size-3 text-tint" aria-hidden />
@@ -1535,7 +1551,7 @@ export function Reader(props: ReaderProps) {
           <section className="reader-notes" aria-label={t("Notes")}>
             <h2 className="panel-heading">
               {t("Notes")}
-              {sorted.length > 0 && (
+              {sorted.length > 0 && !props.readOnly && (
                 <span className="font-normal text-muted-foreground">
                   {t("Drag a highlight here to quote it")}
                 </span>
@@ -1545,7 +1561,7 @@ export function Reader(props: ReaderProps) {
           </section>
         </aside>
       </div>
-      {menu && (
+      {menu && !(props.readOnly && !props.onAsk) && (
         <div
           className="highlight-menu"
           role="toolbar"
@@ -1553,7 +1569,7 @@ export function Reader(props: ReaderProps) {
           style={{ left: menu.x, top: menu.y }}
           onPointerDown={(event) => event.preventDefault()}
         >
-          {CATEGORIES.map((category) => (
+          {(props.readOnly ? [] : CATEGORIES).map((category) => (
             <button
               key={category.id}
               type="button"

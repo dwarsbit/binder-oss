@@ -280,6 +280,9 @@ importers:
       '@scholarkit/assistant':
         specifier: workspace:*
         version: link:packages/assistant
+      '@scholarkit/collab':
+        specifier: workspace:*
+        version: link:packages/collab
       '@scholarkit/contracts':
         specifier: workspace:*
         version: link:packages/contracts

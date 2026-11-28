@@ -264,4 +264,15 @@ describe("tags and Zotero", () => {
     expect(zoteroLink("groups/42", "X1")).toBe("zotero://select/groups/42/items/X1");
     expect(zoteroKeyOf("zotero://select/groups/42/items/X1")).toBe("X1");
   });
+
+  it("keeps who added an item, and leaves it out otherwise", () => {
+    const shared = readItem(
+      "items/x.md",
+      newItemSource({ title: "On reading", kind: "article", addedBy: "Anna de Boer" }),
+    );
+    expect(shared.addedBy).toBe("Anna de Boer");
+    const own = newItemSource({ title: "On reading", kind: "article" });
+    expect(own).not.toContain("added-by");
+    expect(readItem("items/y.md", own).addedBy).toBe("");
+  });
 });

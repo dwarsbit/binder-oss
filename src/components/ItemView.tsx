@@ -38,12 +38,14 @@ function TextField({
   placeholder,
   onCommit,
   action,
+  readOnly = false,
 }: {
   label: string;
   value: string;
   placeholder?: string;
   onCommit: (value: string) => void;
   action?: React.ReactNode;
+  readOnly?: boolean;
 }) {
   const [draft, setDraft] = useState(value);
   // A value changed elsewhere replaces the draft.
@@ -63,9 +65,10 @@ function TextField({
           className="prop-input min-w-0 flex-1"
           aria-label={label}
           value={draft}
+          readOnly={readOnly}
           placeholder={placeholder ?? t("Empty")}
           onChange={(event) => setDraft(event.target.value)}
-          onBlur={commit}
+          onBlur={readOnly ? undefined : commit}
           onKeyDown={(event) => {
             if (event.key === "Enter") event.currentTarget.blur();
             if (event.key === "Escape") {
@@ -92,14 +95,29 @@ function Tags({
   onChange,
 }: {
   tags: string[];
-  onChange: (tags: string[]) => void;
+  /** Absent where the binder can't be changed: the chips alone. */
+  onChange?: (tags: string[]) => void;
 }) {
   const [draft, setDraft] = useState("");
   const add = () => {
     const tag = draft.trim().replace(/,+$/, "").trim();
     setDraft("");
-    if (tag && !tags.includes(tag)) onChange([...tags, tag]);
+    if (tag && !tags.includes(tag)) onChange?.([...tags, tag]);
   };
+  if (!onChange) {
+    return (
+      <>
+        <dt>{t("Tags")}</dt>
+        <dd>
+          {tags.map((tag) => (
+            <span key={tag} className="chip">
+              {tag}
+            </span>
+          ))}
+        </dd>
+      </>
+    );
+  }
   return (
     <>
       <dt>{t("Tags")}</dt>
@@ -201,8 +219,10 @@ function TitleField({
   onChange,
   onDone,
   onEnter,
+  readOnly = false,
 }: {
   value: string;
+  readOnly?: boolean;
   fieldRef: React.RefObject<HTMLTextAreaElement | null>;
   onChange: (title: string) => void;
   onDone: () => void;
@@ -221,6 +241,7 @@ function TitleField({
       rows={1}
       className="page-title"
       value={value}
+      readOnly={readOnly}
       placeholder={t("Untitled")}
       aria-label={t("Title")}
       onChange={(event) => onChange(event.target.value.replace(/\r?\n/g, " "))}
@@ -309,6 +330,13 @@ export interface ItemViewProps {
   /** Whether a free PDF was looked for and none was found. */
   noFreePdf?: boolean;
   onDelete: () => void;
+  /**
+   * The binder was shared with you to read: the item shows as it is, with nothing to
+   * change it with.
+   */
+  readOnly?: boolean;
+  /** Who added the item, when it was someone else in a shared binder. */
+  addedBy?: string;
   /** What the assistant wrote about the item, between its details and the notes. */
   assistant?: React.ReactNode;
   backlinks: Backlink[];
@@ -327,10 +355,8 @@ export function ItemView({ focusRef, focusEndRef, titleRef, ...props }: ItemView
 
   const shown = (Object.keys(LABELS) as Array<keyof typeof LABELS>).filter((field) => {
     const value = item[field];
-    return (
-      (Array.isArray(value) ? value.length > 0 : value !== "") ||
-      FIELDS[item.kind].includes(field)
-    );
+    const filled = Array.isArray(value) ? value.length > 0 : value !== "";
+    return filled || (!props.readOnly && FIELDS[item.kind].includes(field));
   });
   /** Where a detail's Open button goes: the DOI, the arXiv or PubMed page, the address. */
   const linkOf = (field: keyof typeof LABELS): string => {
@@ -412,21 +438,24 @@ export function ItemView({ focusRef, focusEndRef, titleRef, ...props }: ItemView
             </button>
           </>
         )}
-        <button
-          type="button"
-          aria-label={t("Delete item")}
-          title={t("Delete item")}
-          onClick={props.onDelete}
-          className="grid size-6 place-items-center rounded-md hover:bg-muted hover:text-destructive"
-        >
-          <Trash2 className="size-3.5" aria-hidden />
-        </button>
+        {!props.readOnly && (
+          <button
+            type="button"
+            aria-label={t("Delete item")}
+            title={t("Delete item")}
+            onClick={props.onDelete}
+            className="grid size-6 place-items-center rounded-md hover:bg-muted hover:text-destructive"
+          >
+            <Trash2 className="size-3.5" aria-hidden />
+          </button>
+        )}
       </div>
 
       <div ref={scroller} className="min-h-0 flex-1 overflow-y-auto" id="page-scroll">
         <article className="page" key={props.opened}>
           <TitleField
             value={props.title}
+            readOnly={props.readOnly}
             fieldRef={titleRef}
             onChange={props.onTitle}
             onDone={props.onTitleDone}
@@ -438,6 +467,7 @@ export function ItemView({ focusRef, focusEndRef, titleRef, ...props }: ItemView
               <Select
                 className="prop-input w-auto"
                 aria-label={t("Kind")}
+                disabled={props.readOnly}
                 value={item.kind}
                 options={KINDS.map((kind) => ({
                   value: kind.id,
@@ -462,6 +492,7 @@ export function ItemView({ focusRef, focusEndRef, titleRef, ...props }: ItemView
                   <Select
                     className="prop-input w-auto"
                     aria-label={t("Status")}
+                    disabled={props.readOnly}
                     value={item.status ?? ""}
                     options={[
                       ...(item.kind === "thought"
@@ -484,6 +515,7 @@ export function ItemView({ focusRef, focusEndRef, titleRef, ...props }: ItemView
                 label={LABELS[field]}
                 value={field === "authors" ? item.authors.join("; ") : item[field]}
                 placeholder={PLACEHOLDERS[field]}
+                readOnly={props.readOnly}
                 onCommit={(value) =>
                   props.onChange({
                     [KEY_OF[field]]:
@@ -563,17 +595,28 @@ export function ItemView({ focusRef, focusEndRef, titleRef, ...props }: ItemView
                 </dd>
               </>
             )}
-            <Tags tags={item.tags} onChange={(tags) => props.onChange({ tags })} />
+            {props.readOnly ? (
+              item.tags.length > 0 && <Tags tags={item.tags} />
+            ) : (
+              <Tags tags={item.tags} onChange={(tags) => props.onChange({ tags })} />
+            )}
             {item.added && (
               <>
                 <dt>{t("Added")}</dt>
                 <dd className="text-muted-foreground tabular-nums">{item.added}</dd>
               </>
             )}
+            {props.addedBy && (
+              <>
+                <dt>{t("Added by")}</dt>
+                <dd className="text-muted-foreground">{props.addedBy}</dd>
+              </>
+            )}
           </dl>
           {props.assistant}
           <Editor
             markdown={item.markdown}
+            readOnly={props.readOnly}
             onChange={(change) => props.onMarkdown(change.markdown)}
             focusRef={focusRef}
             focusEndRef={focusEndRef}
@@ -581,7 +624,7 @@ export function ItemView({ focusRef, focusEndRef, titleRef, ...props }: ItemView
           <Backlinks links={props.backlinks} />
         </article>
       </div>
-      {item.status === "inbox" && (
+      {item.status === "inbox" && !props.readOnly && (
         <AcceptBar item={item} onStatus={(status) => props.onChange({ status })} />
       )}
     </div>

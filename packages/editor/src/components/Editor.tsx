@@ -156,6 +156,7 @@ export function Editor({
   others,
   onSelection,
   onAsk,
+  readOnly = false,
 }: {
   /**
    * The page when the editor opens; later edits live in the editor. When
@@ -185,6 +186,8 @@ export function Editor({
   onSelection?: (selection: { anchor: number; head: number }) => void;
   /** Asks the app's assistant about the selection: an Ask button in its toolbar. */
   onAsk?: (editor: TiptapEditor) => void;
+  /** The page can be read, selected and copied, but not changed. */
+  readOnly?: boolean;
 }) {
   const [math, setMath] = useState<MathTarget | null>(null);
   const [note, setNote] = useState<number | null>(null);
@@ -277,6 +280,7 @@ export function Editor({
 
   const editor = useEditor({
     extensions,
+    editable: !readOnly,
     content: inlineNumberedNotes(markdown),
     contentType: "markdown",
     editorProps: {
@@ -328,6 +332,10 @@ export function Editor({
     }
     if (editorRef) editorRef.current = editor;
   }, [editor, focusRef, focusEndRef, editorRef]);
+
+  useEffect(() => {
+    if (editor.isEditable === readOnly) editor.setEditable(!readOnly, false);
+  }, [editor, readOnly]);
 
   // The page changed elsewhere: bring it in. It comes in right away, even while you
   // compose a character, so the next edit here builds on it instead of writing over it.
@@ -479,6 +487,16 @@ export function Editor({
       }}
     />
   );
+
+  // Read-only, the page has no handles, menus or formatting bar: only its blocks.
+  if (readOnly) {
+    return (
+      <>
+        <EditorContent editor={editor} />
+        <Footnotes editor={editor} onOpen={setNote} />
+      </>
+    );
+  }
 
   if (inSlide) {
     return (

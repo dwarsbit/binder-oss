@@ -26,6 +26,7 @@
   },
   "dependencies": {
     "@scholarkit/account-menu": "workspace:*",
+    "@scholarkit/collab": "workspace:*",
     "@scholarkit/assistant": "workspace:*",
     "@scholarkit/contracts": "workspace:*",
     "@scholarkit/editor": "workspace:*",

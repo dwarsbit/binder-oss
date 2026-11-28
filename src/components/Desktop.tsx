@@ -5,6 +5,9 @@ import { AccountDialog } from "@/components/AccountDialog";
 import { AccountMenu } from "@/components/AccountMenu";
 import { Mark } from "@/components/Mark";
 import { AppLoading } from "@scholarkit/editor/components/AppShell";
+import { ConfirmDialog } from "@scholarkit/editor/components/ConfirmDialog";
+import { ShareDialog } from "@scholarkit/editor/components/ShareDialog";
+import { People, useOthers } from "@/components/People";
 import { BinderPicker } from "@/components/BinderPicker";
 import {
   folderSync,
@@ -110,6 +113,8 @@ interface Session {
   /** The store the app uses: the folder's, telling of what a sync changed. */
   appStore: BinderStore;
   projectId: string | null;
+  /** The binder in the account it syncs with, and your role in it; null when unknown. */
+  info: ServerProject | null;
   sync: FolderSync | null;
 }
 
@@ -123,6 +128,7 @@ async function openSession(dir: string, signedIn: boolean): Promise<Session> {
     store,
     appStore: store,
     projectId: null,
+    info: null,
     sync: null,
   };
   // Free PDFs, paper search and the assistant on our model go through the account's server,
@@ -145,6 +151,7 @@ async function openSession(dir: string, signedIn: boolean): Promise<Session> {
 
   // A binder you can only read syncs one way. Unreachable, it is taken as yours.
   const info = await server.project(link.projectId).catch(() => null);
+  session.info = info;
   const projectId = link.projectId;
   const sync = folderSync({
     server,
@@ -219,7 +226,15 @@ export function Desktop() {
   // Counts the changes to the folder's link: each one opens the folder anew.
   const [linked, setLinked] = useState(0);
   const [syncState, setSyncState] = useState<SyncState | null>(null);
-  const [signingIn, setSigningIn] = useState(false);
+  // Why signing in is asked for, when it is for something in particular; null while closed.
+  const [signingIn, setSigningIn] = useState<{ note?: string } | null>(null);
+  // Share: the dialog, or first a yes to syncing the binder with the account.
+  const [sharing, setSharing] = useState<"dialog" | "link" | null>(null);
+  const { others, reload } = useOthers(
+    server,
+    session?.info ?? null,
+    account?.id ?? null,
+  );
 
   // The macOS window buttons sit over the app's top left corner, which
   // makes room for them. A full-screen window has none.
@@ -430,22 +445,40 @@ export function Desktop() {
     [signedIn, accountBinders, openFromAccount],
   );
 
+  /** Share: signed out, it signs in first; a binder only on this computer syncs first. */
+  const share = () => {
+    if (!signedIn)
+      setSigningIn({ note: t("Sign in to share this binder with others.") });
+    else if (!session?.projectId) setSharing("link");
+    else setSharing("dialog");
+  };
+
+  /** You left a binder someone shared: the folder stays, and no longer syncs. */
+  const leave = async () => {
+    setSharing(null);
+    await unlink();
+  };
+
   const status = useMemo<Status | undefined>(() => {
     if (!session?.projectId) return undefined;
     if (!signedIn) return syncStatus({ kind: "signed-out" });
     return syncState ? syncStatus(syncState) : undefined;
   }, [session, signedIn, syncState]);
 
+  const info = session?.info ?? null;
+  const reader = info && (info.role === "viewer" || info.role === "commenter");
+
   const accountDialog = signingIn && (
     <AccountDialog
+      note={signingIn.note}
       onSignIn={async (create) => {
         await signIn(create);
-        setSigningIn(false);
+        setSigningIn(null);
       }}
       onCancelSignIn={() => void invoke("account_cancel_sign_in")}
       onClose={() => {
         void invoke("account_cancel_sign_in");
-        setSigningIn(false);
+        setSigningIn(null);
       }}
     />
   );
@@ -457,7 +490,7 @@ export function Desktop() {
       account={account}
       loadUsage={loadUsage}
       linked={folder ? Boolean(session?.projectId) : undefined}
-      onSignIn={() => setSigningIn(true)}
+      onSignIn={() => setSigningIn({})}
       onLink={link}
       onUnlink={unlink}
       onManage={() => openAccountPage("/account")}
@@ -498,8 +531,43 @@ export function Desktop() {
         onRenameBinder={renameBinder}
         status={status}
         account={accountMenu("header")}
+        share={<People people={others} onShare={share} />}
+        readOnly={reader ? { owner: info.owner.name } : undefined}
+        me={account?.name}
+        shared={others.length > 0}
       />
       {accountDialog}
+      {sharing === "link" && (
+        <ConfirmDialog
+          title={t("Sync this binder first?")}
+          body={t(
+            "To share a binder, it syncs with your Scholarkit account, so the people you invite can open it. Files over 50 MB stay on this computer.",
+          )}
+          confirmLabel={t("Sync and share")}
+          tone="go"
+          onConfirm={() =>
+            void link().then(
+              () => setSharing("dialog"),
+              () => setSharing(null),
+            )
+          }
+          onCancel={() => setSharing(null)}
+        />
+      )}
+      {sharing === "dialog" && info && account && (
+        <ShareDialog
+          shared="binder"
+          server={server}
+          project={info}
+          me={account}
+          onLeft={() => void leave()}
+          openPlans={() => openAccountPage("/account#plan")}
+          onClose={() => {
+            setSharing(null);
+            reload();
+          }}
+        />
+      )}
     </>
   );
 }

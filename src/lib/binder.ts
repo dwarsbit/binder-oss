@@ -95,6 +95,8 @@ export interface Item {
   tags: string[];
   /** The date it was added, `YYYY-MM-DD`. */
   added: string;
+  /** Who added it, in a shared binder: their name. Empty otherwise. */
+  addedBy: string;
   /** The notes: the file's body. */
   markdown: string;
   /** False when the assistant is to stay away from the item. */
@@ -122,6 +124,7 @@ const KEYS = [
   "zotero-version",
   "tags",
   "added",
+  "added-by",
   "assistant",
 ] as const;
 type Key = (typeof KEYS)[number];
@@ -180,6 +183,7 @@ export function readItem(path: string, source: string): Item {
     zotero: text(properties, "zotero"),
     tags: list(properties, "tags"),
     added: text(properties, "added"),
+    addedBy: text(properties, "added-by"),
     markdown: page.markdown,
     assistant: !keepsOut(text(properties, "assistant")),
   };
@@ -264,6 +268,8 @@ export interface NewItem {
   zoteroVersion?: number;
   tags?: string[];
   markdown?: string;
+  /** Who added it, in a shared binder. */
+  addedBy?: string;
 }
 
 /** Today as `YYYY-MM-DD`, in the computer's time zone. */
@@ -302,6 +308,7 @@ export function newItemSource(item: NewItem, added = today()): string {
       item.zoteroVersion === undefined ? null : String(item.zoteroVersion),
     tags: item.tags ?? null,
     added,
+    "added-by": item.addedBy ?? null,
   });
 }
 

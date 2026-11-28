@@ -1,4 +1,12 @@
-import { LayoutGrid, Library, List, PanelLeft, Sparkles, Upload } from "lucide-react";
+import {
+  Eye,
+  LayoutGrid,
+  Library,
+  List,
+  PanelLeft,
+  Sparkles,
+  Upload,
+} from "lucide-react";
 import {
   useCallback,
   useEffect,
@@ -7,7 +15,7 @@ import {
   useState,
   useSyncExternalStore,
 } from "react";
-import { ConfirmDialog } from "@/components/ConfirmDialog";
+import { ConfirmDialog } from "@scholarkit/editor/components/ConfirmDialog";
 import { AddDialog, lastAddTab, type AddTab } from "@/components/AddDialog";
 import { AssistantPanel } from "@/components/AssistantPanel";
 import { ExportDialog } from "@/components/ExportDialog";
@@ -125,7 +133,7 @@ import {
   writeHighlights,
   type Highlight,
 } from "@/lib/highlights";
-import { removeFrom, renameIn, type BinderStore } from "@/lib/store";
+import { guardWrites, removeFrom, renameIn, type BinderStore } from "@/lib/store";
 import { applyChanges, type PageChange } from "@scholarkit/editor/lib/project-doc";
 import {
   isEpub,
@@ -268,11 +276,15 @@ function freeFilePath(project: Project, dir: string, name: string): string {
 const stemOf = (path: string) => baseName(path).replace(/\.[^.]*$/, "");
 
 export default function App({
-  store,
+  store: given,
   onSwitchBinder,
   onRenameBinder,
   status,
   account,
+  share,
+  readOnly,
+  me,
+  shared = false,
   homeHref,
   projectId,
   onPlans,
@@ -288,11 +300,25 @@ export default function App({
   status?: { text: string; warn?: boolean };
   /** The account, at the end of the header, where the app has one. */
   account?: React.ReactNode;
+  /** Share and the faces of the people in the binder, in the header before the account. */
+  share?: React.ReactNode;
+  /** The binder was shared with you to read, by its owner: nothing in it changes. */
+  readOnly?: { owner: string };
+  /** Your name, where the app knows it: items someone else added say who did. */
+  me?: string;
+  /** Whether others work in the binder too: new items say who added them. */
+  shared?: boolean;
   /** Where the app's icon goes, where the app has a page for it: the Scholarkit home in the browser. */
   homeHref?: string;
   /** Opens the account's plans, where the app has an account. */
   onPlans?: () => void;
 }) {
+  // Read-only, nothing reaches the binder, whatever asks to change it.
+  const locked = useRef(Boolean(readOnly));
+  useEffect(() => {
+    locked.current = Boolean(readOnly);
+  });
+  const store = useMemo(() => guardWrites(given, () => locked.current), [given]);
   const [project, setProject] = useState<Project | null>(null);
   // The binder as of the last change, also before the screen shows it.
   const fresh = useRef<Project | null>(null);
@@ -650,6 +676,8 @@ export default function App({
     const text = newItemSource({
       ...entry,
       file: file && options.data ? baseName(file) : entry.file,
+      // In a shared binder, the others see who added it.
+      addedBy: entry.addedBy ?? (shared && me ? me : undefined),
     });
     commit({
       ...latest,
@@ -1248,6 +1276,7 @@ export default function App({
       send: () => modelFor(assistantSnapshot()),
       ours: () => sourceOf(assistantSnapshot(), signedIn) === "scholarkit",
       openItem: () => readingItem ?? item,
+      readOnly: () => locked.current,
       applyProperties: (path, changes) => applyProperties(path, changes),
       saveNote: async (title, markdown) => {
         const path = await addItem({ title, kind: "note", markdown });
@@ -1621,7 +1650,7 @@ export default function App({
       const key = event.key.toLowerCase();
       if (key === "n" && !event.shiftKey) {
         event.preventDefault();
-        setAdding(lastAddTab());
+        if (!locked.current) setAdding(lastAddTab());
       } else if (key === "k" || (key === "f" && event.shiftKey)) {
         event.preventDefault();
         event.stopPropagation();
@@ -1677,7 +1706,7 @@ export default function App({
     const hasFiles = (event: DragEvent) =>
       event.dataTransfer?.types.includes("Files") ?? false;
     const enter = (event: DragEvent) => {
-      if (!hasFiles(event)) return;
+      if (!hasFiles(event) || locked.current) return;
       depth += 1;
       setDropping(true);
     };
@@ -1687,12 +1716,12 @@ export default function App({
       if (depth === 0) setDropping(false);
     };
     const over = (event: DragEvent) => {
-      if (hasFiles(event)) event.preventDefault();
+      if (hasFiles(event) && !locked.current) event.preventDefault();
     };
     const drop = (event: DragEvent) => {
       depth = 0;
       setDropping(false);
-      if (event.defaultPrevented || !hasFiles(event)) return;
+      if (event.defaultPrevented || !hasFiles(event) || locked.current) return;
       event.preventDefault();
       const files = [...(event.dataTransfer?.files ?? [])];
       if (files.length) dropFiles.current(files);
@@ -1949,6 +1978,7 @@ export default function App({
       onItemAssistant={(on) =>
         changeItem(item.path, { assistant: on ? null : "false" })
       }
+      readOnly={Boolean(readOnly)}
     />
   );
 
@@ -1985,19 +2015,25 @@ export default function App({
             : undefined
         }
         onKeep={
-          store.fetchWeb && item.url && !item.file && /^https?:\/\//i.test(item.url)
+          !readOnly &&
+          store.fetchWeb &&
+          item.url &&
+          !item.file &&
+          /^https?:\/\//i.test(item.url)
             ? () => void keepWebPage(item)
             : undefined
         }
         keeping={keeping}
         onFindPdf={
-          store.openAccessPdfs && store.download && itemDoi && !item.file
+          !readOnly && store.openAccessPdfs && store.download && itemDoi && !item.file
             ? () => void findFreePdf(item.path, itemDoi)
             : undefined
         }
         findingPdf={findingPdf.has(item.path)}
         noFreePdf={Boolean(itemDoi && noFreePdf.has(itemDoi.toLowerCase()))}
         onDelete={() => setDeleting(item)}
+        readOnly={Boolean(readOnly)}
+        addedBy={item.addedBy && item.addedBy !== me ? item.addedBy : undefined}
         assistant={assistantPanel}
         backlinks={linkedFrom}
         focusRef={focusEditor}
@@ -2079,6 +2115,7 @@ export default function App({
       }}
       target={reading.target}
       actions={askButton}
+      readOnly={Boolean(readOnly)}
       onAsk={(selected) => {
         chat.openMenu(
           { path: readingItem.path, text: selected.text, page: selected.page },
@@ -2095,6 +2132,7 @@ export default function App({
           <Editor
             key={`${readingItem.path}:${opened}`}
             markdown={readingItem.markdown}
+            readOnly={Boolean(readOnly)}
             editorRef={notesEditor}
             onChange={(change) => {
               const latestSource = fresh.current?.pages[readingItem.path];
@@ -2123,7 +2161,7 @@ export default function App({
         homeHref={homeHref}
         binderName={project.name}
         question={info.question}
-        onQuestion={setQuestion}
+        onQuestion={readOnly ? undefined : setQuestion}
         view={view}
         onView={showView}
         counts={counts}
@@ -2132,11 +2170,15 @@ export default function App({
           name: entry.name,
           count: items.filter((other) => inList(other, entry)).length,
         }))}
-        onNewList={newList}
-        onAdd={() => {
-          setNavOpen(false);
-          setAdding(lastAddTab());
-        }}
+        onNewList={readOnly ? undefined : newList}
+        onAdd={
+          readOnly
+            ? undefined
+            : () => {
+                setNavOpen(false);
+                setAdding(lastAddTab());
+              }
+        }
         onSearch={() => {
           setNavOpen(false);
           setSearching("");
@@ -2212,7 +2254,9 @@ export default function App({
               >
                 <PanelLeft className="size-4" aria-hidden />
               </button>
-              {list ? (
+              {list && readOnly ? (
+                <h1 className="truncate text-sm font-semibold">{list.name}</h1>
+              ) : list ? (
                 <ListName
                   name={list.name}
                   renaming={renamingList}
@@ -2235,7 +2279,7 @@ export default function App({
                   {t("Export…")}
                 </button>
               )}
-              {view.kind === "inbox" && (
+              {view.kind === "inbox" && !readOnly && (
                 <button
                   type="button"
                   className={HEADER_BUTTON}
@@ -2280,19 +2324,23 @@ export default function App({
                 </div>
               )}
               {askButton}
+              {share}
               {account}
             </header>
 
             {list && (
-              <FilterBar
-                key={list.name}
-                list={list}
-                tags={tags.map((entry) => entry.tag)}
-                onChange={(filters) => setFilters(list.name, filters)}
-                onRename={() => setRenamingList(true)}
-                onDuplicate={() => duplicateList(list.name)}
-                onDelete={() => setDeletingList(list.name)}
-              />
+              // Read-only, a list's filters show what it holds, and don't change.
+              <div className="contents" inert={Boolean(readOnly)}>
+                <FilterBar
+                  key={list.name}
+                  list={list}
+                  tags={tags.map((entry) => entry.tag)}
+                  onChange={(filters) => setFilters(list.name, filters)}
+                  onRename={() => setRenamingList(true)}
+                  onDuplicate={() => duplicateList(list.name)}
+                  onDelete={() => setDeletingList(list.name)}
+                />
+              </div>
             )}
 
             {finding && item && (
@@ -2307,7 +2355,11 @@ export default function App({
               itemView || (
                 <div className="min-h-0 flex-1 overflow-auto">
                   {shown.length ? (
-                    <Board items={shown} onOpen={open} onStatus={setStatus} />
+                    <Board
+                      items={shown}
+                      onOpen={open}
+                      onStatus={readOnly ? undefined : setStatus}
+                    />
                   ) : (
                     <p className="p-4 text-[13px] text-muted-foreground">{emptyText}</p>
                   )}
@@ -2339,6 +2391,20 @@ export default function App({
           </>
         )}
 
+        {readOnly && (
+          <div
+            className="flex min-h-9 flex-none items-center gap-2 border-t bg-muted px-3.5 py-1.5 text-xs text-muted-foreground"
+            role="note"
+          >
+            <Eye className="size-3.5 flex-none" aria-hidden />
+            <span>
+              {t(
+                "{owner} shares this binder with you. You can read it and its sources, but not change them.",
+                { owner: readOnly.owner },
+              )}
+            </span>
+          </div>
+        )}
         <footer className="flex h-7 flex-none items-center gap-3.5 border-t px-3.5 text-2xs whitespace-nowrap text-muted-foreground tabular-nums">
           <span className="inline-flex min-w-0 items-center gap-1.5" role="status">
             <span
